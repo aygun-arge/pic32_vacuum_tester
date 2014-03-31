@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=mla/source/MDDFS/FSIO.c mla/source/USB/usb_host.c mla/source/USB/usb_host_msd_scsi.c mla/source/USB/usb_host_msd.c application/source/main.c application/source/usb_config.c
+SOURCEFILES_QUOTED_IF_SPACED=application/source/main.c application/source/usb_config.c ft800/source/FT_CoPro_Cmds.c ft800/source/FT_Gpu_Hal.c mla/source/MDDFS/FSIO.c mla/source/USB/usb_host.c mla/source/USB/usb_host_msd_scsi.c mla/source/USB/usb_host_msd.c driver/source/lld_spis.c driver/source/lld_spi1.c driver/source/spi.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/mla/source/MDDFS/FSIO.o ${OBJECTDIR}/mla/source/USB/usb_host.o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o ${OBJECTDIR}/application/source/main.o ${OBJECTDIR}/application/source/usb_config.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d ${OBJECTDIR}/mla/source/USB/usb_host.o.d ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d ${OBJECTDIR}/application/source/main.o.d ${OBJECTDIR}/application/source/usb_config.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/application/source/main.o ${OBJECTDIR}/application/source/usb_config.o ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o ${OBJECTDIR}/mla/source/USB/usb_host.o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o ${OBJECTDIR}/driver/source/lld_spis.o ${OBJECTDIR}/driver/source/lld_spi1.o ${OBJECTDIR}/driver/source/spi.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/application/source/main.o.d ${OBJECTDIR}/application/source/usb_config.o.d ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d ${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d ${OBJECTDIR}/mla/source/USB/usb_host.o.d ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d ${OBJECTDIR}/driver/source/lld_spis.o.d ${OBJECTDIR}/driver/source/lld_spi1.o.d ${OBJECTDIR}/driver/source/spi.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/mla/source/MDDFS/FSIO.o ${OBJECTDIR}/mla/source/USB/usb_host.o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o ${OBJECTDIR}/application/source/main.o ${OBJECTDIR}/application/source/usb_config.o
+OBJECTFILES=${OBJECTDIR}/application/source/main.o ${OBJECTDIR}/application/source/usb_config.o ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o ${OBJECTDIR}/mla/source/USB/usb_host.o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o ${OBJECTDIR}/driver/source/lld_spis.o ${OBJECTDIR}/driver/source/lld_spi1.o ${OBJECTDIR}/driver/source/spi.o
 
 # Source Files
-SOURCEFILES=mla/source/MDDFS/FSIO.c mla/source/USB/usb_host.c mla/source/USB/usb_host_msd_scsi.c mla/source/USB/usb_host_msd.c application/source/main.c application/source/usb_config.c
+SOURCEFILES=application/source/main.c application/source/usb_config.c ft800/source/FT_CoPro_Cmds.c ft800/source/FT_Gpu_Hal.c mla/source/MDDFS/FSIO.c mla/source/USB/usb_host.c mla/source/USB/usb_host_msd_scsi.c mla/source/USB/usb_host_msd.c driver/source/lld_spis.c driver/source/lld_spi1.c driver/source/spi.c
 
 
 CFLAGS=
@@ -91,78 +91,138 @@ endif
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: compile
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/mla/source/MDDFS/FSIO.o: mla/source/MDDFS/FSIO.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/MDDFS 
-	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" -o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o mla/source/MDDFS/FSIO.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host.o: mla/source/USB/usb_host.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host.o mla/source/USB/usb_host.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o: mla/source/USB/usb_host_msd_scsi.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o mla/source/USB/usb_host_msd_scsi.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host_msd.o: mla/source/USB/usb_host_msd.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o mla/source/USB/usb_host_msd.c   
-	
 ${OBJECTDIR}/application/source/main.o: application/source/main.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/application/source 
 	@${RM} ${OBJECTDIR}/application/source/main.o.d 
 	@${RM} ${OBJECTDIR}/application/source/main.o 
-	@${FIXDEPS} "${OBJECTDIR}/application/source/main.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/application/source/main.o.d" -o ${OBJECTDIR}/application/source/main.o application/source/main.c   
+	@${FIXDEPS} "${OBJECTDIR}/application/source/main.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/application/source/main.o.d" -o ${OBJECTDIR}/application/source/main.o application/source/main.c   
 	
 ${OBJECTDIR}/application/source/usb_config.o: application/source/usb_config.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/application/source 
 	@${RM} ${OBJECTDIR}/application/source/usb_config.o.d 
 	@${RM} ${OBJECTDIR}/application/source/usb_config.o 
-	@${FIXDEPS} "${OBJECTDIR}/application/source/usb_config.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/application/source/usb_config.o.d" -o ${OBJECTDIR}/application/source/usb_config.o application/source/usb_config.c   
+	@${FIXDEPS} "${OBJECTDIR}/application/source/usb_config.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/application/source/usb_config.o.d" -o ${OBJECTDIR}/application/source/usb_config.o application/source/usb_config.c   
+	
+${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o: ft800/source/FT_CoPro_Cmds.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/ft800/source 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o 
+	@${FIXDEPS} "${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d" -o ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o ft800/source/FT_CoPro_Cmds.c   
+	
+${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o: ft800/source/FT_Gpu_Hal.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/ft800/source 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o 
+	@${FIXDEPS} "${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d" -o ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o ft800/source/FT_Gpu_Hal.c   
+	
+${OBJECTDIR}/mla/source/MDDFS/FSIO.o: mla/source/MDDFS/FSIO.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/MDDFS 
+	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" -o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o mla/source/MDDFS/FSIO.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host.o: mla/source/USB/usb_host.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host.o mla/source/USB/usb_host.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o: mla/source/USB/usb_host_msd_scsi.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o mla/source/USB/usb_host_msd_scsi.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host_msd.o: mla/source/USB/usb_host_msd.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o mla/source/USB/usb_host_msd.c   
+	
+${OBJECTDIR}/driver/source/lld_spis.o: driver/source/lld_spis.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spis.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spis.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/lld_spis.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/lld_spis.o.d" -o ${OBJECTDIR}/driver/source/lld_spis.o driver/source/lld_spis.c   
+	
+${OBJECTDIR}/driver/source/lld_spi1.o: driver/source/lld_spi1.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spi1.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spi1.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/lld_spi1.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/lld_spi1.o.d" -o ${OBJECTDIR}/driver/source/lld_spi1.o driver/source/lld_spi1.c   
+	
+${OBJECTDIR}/driver/source/spi.o: driver/source/spi.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/spi.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/spi.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/spi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_ICD3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/spi.o.d" -o ${OBJECTDIR}/driver/source/spi.o driver/source/spi.c   
 	
 else
-${OBJECTDIR}/mla/source/MDDFS/FSIO.o: mla/source/MDDFS/FSIO.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/MDDFS 
-	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" -o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o mla/source/MDDFS/FSIO.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host.o: mla/source/USB/usb_host.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host.o mla/source/USB/usb_host.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o: mla/source/USB/usb_host_msd_scsi.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o mla/source/USB/usb_host_msd_scsi.c   
-	
-${OBJECTDIR}/mla/source/USB/usb_host_msd.o: mla/source/USB/usb_host_msd.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d 
-	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o 
-	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o mla/source/USB/usb_host_msd.c   
-	
 ${OBJECTDIR}/application/source/main.o: application/source/main.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/application/source 
 	@${RM} ${OBJECTDIR}/application/source/main.o.d 
 	@${RM} ${OBJECTDIR}/application/source/main.o 
-	@${FIXDEPS} "${OBJECTDIR}/application/source/main.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/application/source/main.o.d" -o ${OBJECTDIR}/application/source/main.o application/source/main.c   
+	@${FIXDEPS} "${OBJECTDIR}/application/source/main.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/application/source/main.o.d" -o ${OBJECTDIR}/application/source/main.o application/source/main.c   
 	
 ${OBJECTDIR}/application/source/usb_config.o: application/source/usb_config.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/application/source 
 	@${RM} ${OBJECTDIR}/application/source/usb_config.o.d 
 	@${RM} ${OBJECTDIR}/application/source/usb_config.o 
-	@${FIXDEPS} "${OBJECTDIR}/application/source/usb_config.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -MMD -MF "${OBJECTDIR}/application/source/usb_config.o.d" -o ${OBJECTDIR}/application/source/usb_config.o application/source/usb_config.c   
+	@${FIXDEPS} "${OBJECTDIR}/application/source/usb_config.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/application/source/usb_config.o.d" -o ${OBJECTDIR}/application/source/usb_config.o application/source/usb_config.c   
+	
+${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o: ft800/source/FT_CoPro_Cmds.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/ft800/source 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o 
+	@${FIXDEPS} "${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o.d" -o ${OBJECTDIR}/ft800/source/FT_CoPro_Cmds.o ft800/source/FT_CoPro_Cmds.c   
+	
+${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o: ft800/source/FT_Gpu_Hal.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/ft800/source 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d 
+	@${RM} ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o 
+	@${FIXDEPS} "${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o.d" -o ${OBJECTDIR}/ft800/source/FT_Gpu_Hal.o ft800/source/FT_Gpu_Hal.c   
+	
+${OBJECTDIR}/mla/source/MDDFS/FSIO.o: mla/source/MDDFS/FSIO.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/MDDFS 
+	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/MDDFS/FSIO.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/MDDFS/FSIO.o.d" -o ${OBJECTDIR}/mla/source/MDDFS/FSIO.o mla/source/MDDFS/FSIO.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host.o: mla/source/USB/usb_host.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host.o mla/source/USB/usb_host.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o: mla/source/USB/usb_host_msd_scsi.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd_scsi.o mla/source/USB/usb_host_msd_scsi.c   
+	
+${OBJECTDIR}/mla/source/USB/usb_host_msd.o: mla/source/USB/usb_host_msd.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/mla/source/USB 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d 
+	@${RM} ${OBJECTDIR}/mla/source/USB/usb_host_msd.o 
+	@${FIXDEPS} "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/mla/source/USB/usb_host_msd.o.d" -o ${OBJECTDIR}/mla/source/USB/usb_host_msd.o mla/source/USB/usb_host_msd.c   
+	
+${OBJECTDIR}/driver/source/lld_spis.o: driver/source/lld_spis.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spis.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spis.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/lld_spis.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/lld_spis.o.d" -o ${OBJECTDIR}/driver/source/lld_spis.o driver/source/lld_spis.c   
+	
+${OBJECTDIR}/driver/source/lld_spi1.o: driver/source/lld_spi1.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spi1.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/lld_spi1.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/lld_spi1.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/lld_spi1.o.d" -o ${OBJECTDIR}/driver/source/lld_spi1.o driver/source/lld_spi1.c   
+	
+${OBJECTDIR}/driver/source/spi.o: driver/source/spi.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/driver/source 
+	@${RM} ${OBJECTDIR}/driver/source/spi.o.d 
+	@${RM} ${OBJECTDIR}/driver/source/spi.o 
+	@${FIXDEPS} "${OBJECTDIR}/driver/source/spi.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -I"application/include" -I"application/include/config" -I"mla/include" -I"ft800/include" -I"driver/include" -MMD -MF "${OBJECTDIR}/driver/source/spi.o.d" -o ${OBJECTDIR}/driver/source/spi.o driver/source/spi.c   
 	
 endif
 

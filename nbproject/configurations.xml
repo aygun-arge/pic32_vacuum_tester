@@ -14,6 +14,34 @@
         <itemPath>application/source/usb_config.c</itemPath>
       </logicalFolder>
     </logicalFolder>
+    <logicalFolder name="driver" displayName="driver" projectFiles="true">
+      <logicalFolder name="include" displayName="include" projectFiles="true">
+        <logicalFolder name="driver" displayName="driver" projectFiles="true">
+          <itemPath>driver/include/driver/lld_spi1.h</itemPath>
+          <itemPath>driver/include/driver/lld_spis.h</itemPath>
+          <itemPath>driver/include/driver/spi.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="source" displayName="source" projectFiles="true">
+        <itemPath>driver/source/lld_spis.c</itemPath>
+        <itemPath>driver/source/lld_spi1.c</itemPath>
+        <itemPath>driver/source/spi.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
+    <logicalFolder name="ft800" displayName="ft800" projectFiles="true">
+      <logicalFolder name="include" displayName="include" projectFiles="true">
+        <itemPath>ft800/include/FT_Gpu.h</itemPath>
+        <itemPath>ft800/include/FT_Platform.h</itemPath>
+        <itemPath>ft800/include/FT_DataTypes.h</itemPath>
+        <itemPath>ft800/include/FT_Gpu_Hal.h</itemPath>
+        <itemPath>ft800/include/FT_CoPro_Cmds.h</itemPath>
+        <itemPath>ft800/include/FT_Hal_Utils.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="source" displayName="source" projectFiles="true">
+        <itemPath>ft800/source/FT_CoPro_Cmds.c</itemPath>
+        <itemPath>ft800/source/FT_Gpu_Hal.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
@@ -66,6 +94,8 @@
     <Elem>include</Elem>
     <Elem>mla</Elem>
     <Elem>application</Elem>
+    <Elem>ft800</Elem>
+    <Elem>driver</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -107,7 +137,7 @@
         <property key="enable-unroll-loops" value="false"/>
         <property key="exclude-floating-point" value="false"/>
         <property key="extra-include-directories"
-                  value="application/include;application/include/config;mla/include"/>
+                  value="application/include;application/include/config;mla/include;ft800/include;driver/include"/>
         <property key="generate-16-bit-code" value="false"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="false"/>
