@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include "driver/spi.h"
 #define TRUE                            true
 #define FALSE                           false
 #endif

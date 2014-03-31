@@ -30,6 +30,10 @@ ft_bool_t  Ft_Gpu_Hal_Init(Ft_Gpu_HalInit_t *halinit)
 		printf(" ftHandle=0x%x\n",devList.ftHandle);/*is 0 unless open*/
 	}
 #endif
+
+#ifdef PIC32_PLATFORM
+    
+#endif
 	return TRUE;
 }
 ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
