@@ -20,12 +20,18 @@
           <itemPath>driver/include/driver/lld_spi1.h</itemPath>
           <itemPath>driver/include/driver/lld_spis.h</itemPath>
           <itemPath>driver/include/driver/spi.h</itemPath>
+          <itemPath>driver/include/driver/lld_spi2.h</itemPath>
+          <itemPath>driver/include/driver/clock.h</itemPath>
+          <itemPath>driver/include/driver/gpio.h</itemPath>
         </logicalFolder>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>driver/source/lld_spis.c</itemPath>
         <itemPath>driver/source/lld_spi1.c</itemPath>
         <itemPath>driver/source/spi.c</itemPath>
+        <itemPath>driver/source/lld_spi2.c</itemPath>
+        <itemPath>driver/source/clock.c</itemPath>
+        <itemPath>driver/source/gpio.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="ft800" displayName="ft800" projectFiles="true">
@@ -69,8 +75,12 @@
         <itemPath>mla/include/Compiler.h</itemPath>
         <itemPath>mla/include/GenericTypeDefs.h</itemPath>
         <itemPath>mla/include/debug.h</itemPath>
+        <itemPath>mla/include/TimeDelay.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
+        <logicalFolder name="common" displayName="common" projectFiles="true">
+          <itemPath>mla/source/common/TimeDelay.c</itemPath>
+        </logicalFolder>
         <logicalFolder name="MDDFS" displayName="MDDFS" projectFiles="true">
           <itemPath>mla/source/MDDFS/FSIO.c</itemPath>
         </logicalFolder>
@@ -140,10 +150,10 @@
                   value="application/include;application/include/config;mla/include;ft800/include;driver/include"/>
         <property key="generate-16-bit-code" value="false"/>
         <property key="generate-micro-compressed-code" value="false"/>
-        <property key="isolate-each-function" value="false"/>
+        <property key="isolate-each-function" value="true"/>
         <property key="make-warnings-into-errors" value="false"/>
         <property key="optimization-level" value=""/>
-        <property key="place-data-into-section" value="false"/>
+        <property key="place-data-into-section" value="true"/>
         <property key="post-instruction-scheduling" value="default"/>
         <property key="pre-instruction-scheduling" value="default"/>
         <property key="preprocessor-macros" value=""/>
@@ -169,7 +179,7 @@
         <property key="fill-flash-options-seq" value=""/>
         <property key="fill-flash-options-what" value="0"/>
         <property key="generate-16-bit-code" value="false"/>
-        <property key="generate-cross-reference-file" value="false"/>
+        <property key="generate-cross-reference-file" value="true"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="heap-size" value="3000"/>
         <property key="input-libraries" value=""/>
@@ -180,7 +190,7 @@
         <property key="optimization-level" value=""/>
         <property key="preprocessor-macros" value=""/>
         <property key="remove-unused-sections" value="false"/>
-        <property key="report-memory-usage" value="false"/>
+        <property key="report-memory-usage" value="true"/>
         <property key="stack-size" value=""/>
         <property key="symbol-stripping" value=""/>
         <property key="trace-symbols" value=""/>
