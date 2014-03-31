@@ -1,6 +1,8 @@
 #include "FT_Platform.h"
+#include "USB/usb_hal_pic32.h"
+#include "driver/gpio.h"
 
-
+static struct spiHandle FT_SpiHandle;
 
 /* API to initialize the SPI interface */
 ft_bool_t  Ft_Gpu_Hal_Init(Ft_Gpu_HalInit_t *halinit)
@@ -30,10 +32,11 @@ ft_bool_t  Ft_Gpu_Hal_Init(Ft_Gpu_HalInit_t *halinit)
 		printf(" ftHandle=0x%x\n",devList.ftHandle);/*is 0 unless open*/
 	}
 #endif
-
 #ifdef PIC32_PLATFORM
-    
+    *(FT800_INT_PORT)->tris  |=   0x1u << FT800_INT_PIN;
+    *(FT800_PD_N_PORT)->tris &= ~(0x1u << FT800_PD_N_PIN);
 #endif
+
 	return TRUE;
 }
 ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
@@ -59,6 +62,24 @@ ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
 	status = SPI_InitChannel((FT_HANDLE)host->hal_handle,&channelConf);
 	printf("\nhandle=0x%x status=0x%x\n",host->hal_handle,status);	
 #endif
+#ifdef PIC32_PLATFORM
+    struct spiConfig spiConfig = {
+        &GlobalSpi2,
+        SPI_MASTER_MODE | SPI_MASTER_SS_ACTIVE_LOW |
+        SPI_SLAVE_MODE  |
+        SPI_CLOCK_POLARITY_IDLE_LOW | SPI_CLOCK_PHASE_FIRST_EDGE |
+        SPI_DATA_8,
+        1000000ul,
+        2,
+        {
+            SPI2_SDI_RPB2,
+            SPI2_SDO_RPB5,
+            0,                                                                  /* Using hardware dedicated pin                             */
+            SPI2_SS_RPC2_GPIO                                                   /* Using software SS pin                                    */
+        }
+    };
+    spiOpen((struct spiHandle *)host->hal_handle, &spiConfig);
+#endif
 	host->ft_cmd_fifo_wp = host->ft_dl_buff_wp = 0;
 	host->status = FT_GPU_HAL_OPENED;
 	return TRUE;
@@ -72,6 +93,9 @@ ft_void_t  Ft_Gpu_Hal_Close(Ft_Gpu_Hal_Context_t *host)
 #endif
 #ifdef ARDUINO_PLATFORM_SPI
         SPI.end();
+#endif
+#ifdef PIC32_PLATFORM
+    spiClose((struct spiHandle *)host->hal_handle);
 #endif
 }
 
@@ -108,6 +132,17 @@ ft_void_t  Ft_Gpu_Hal_StartTransfer(Ft_Gpu_Hal_Context_t *host,FT_GPU_TRANSFERDI
 
 		SPI.transfer(0); //Dummy Read Byte
 #endif
+#ifdef PIC32_PLATFORM
+        ft_uint8_t Transfer_Array[4];
+
+		/* Compose the read packet */
+		Transfer_Array[0] = addr >> 16;
+		Transfer_Array[1] = addr >> 8;
+		Transfer_Array[2] = addr;
+		Transfer_Array[3] = 0; //Dummy Read byte
+        spiSSActivate((struct spiHandle *)host->hal_handle);
+		spiExchange((struct spiHandle *)host->hal_handle, Transfer_Array, 4);
+#endif
 		host->status = FT_GPU_HAL_READING;
 	}else{
 #ifdef MSVC_PLATFORM_SPI
@@ -125,6 +160,16 @@ ft_void_t  Ft_Gpu_Hal_StartTransfer(Ft_Gpu_Hal_Context_t *host,FT_GPU_TRANSFERDI
 		SPI.transfer(0x80 | (addr >> 16));
 		SPI.transfer(highByte(addr));
 		SPI.transfer(lowByte(addr));
+#endif
+#ifdef PIC32_PLATFORM
+        ft_uint8_t Transfer_Array[3];
+
+		/* Compose the read packet */
+		Transfer_Array[0] = (0x80 | (addr >> 16));
+		Transfer_Array[1] = addr >> 8;
+		Transfer_Array[2] = addr;
+        spiSSActivate((struct spiHandle *)host->hal_handle);
+		spiExchange((struct spiHandle *)host->hal_handle, Transfer_Array, 3u);
 #endif
 		host->status = FT_GPU_HAL_WRITING;
 	}
@@ -166,15 +211,19 @@ ft_uint8_t    Ft_Gpu_Hal_Transfer8(Ft_Gpu_Hal_Context_t *host,ft_uint8_t value)
 	if (SizeTransfered != sizeof(value))
 		host->status = FT_GPU_HAL_STATUS_ERROR;
         return value;
-#endif	
-}
+#endif
+#ifdef PIC32_PLATFORM
+        spiExchange((struct spiHandle *)host->hal_handle, &value, 1u);
 
+        return (value);
+#endif
+}
 
 ft_uint16_t  Ft_Gpu_Hal_Transfer16(Ft_Gpu_Hal_Context_t *host,ft_uint16_t value)
 {
 	ft_uint16_t retVal = 0;
 
-        if (host->status == FT_GPU_HAL_WRITING){
+    if (host->status == FT_GPU_HAL_WRITING){
 		Ft_Gpu_Hal_Transfer8(host,value & 0xFF);//LSB first
 		Ft_Gpu_Hal_Transfer8(host,(value >> 8) & 0xFF);
 	}else{
@@ -205,6 +254,9 @@ ft_void_t   Ft_Gpu_Hal_EndTransfer(Ft_Gpu_Hal_Context_t *host)
 #endif
 #ifdef ARDUINO_PLATFORM_SPI
 	digitalWrite(FT_ARDUINO_PRO_SPI_CS, HIGH);
+#endif
+#ifdef PIC32_PLATFORM
+    spiSSDeactivate((struct spiHandle *)host->hal_handle);
 #endif
 	host->status = FT_GPU_HAL_OPENED;
 }
@@ -273,6 +325,17 @@ ft_void_t Ft_Gpu_HostCommand(Ft_Gpu_Hal_Context_t *host,ft_uint8_t cmd)
   SPI.transfer(0);
   digitalWrite(FT_ARDUINO_PRO_SPI_CS, HIGH);
 #endif
+#ifdef PIC32_PLATFORM
+  ft_uint8_t Transfer_Array[3];
+
+  Transfer_Array[0] = cmd;
+  Transfer_Array[1] = 0;
+  Transfer_Array[2] = 0;
+
+  spiSSActivate((struct spiHandle *)host->hal_handle);
+  spiExchange((struct spiHandle *)host->hal_handle, Transfer_Array, 3u);
+  spiSSDeactivate((struct spiHandle *)host->hal_handle);
+#endif
 }
 
 ft_void_t Ft_Gpu_ClockSelect(Ft_Gpu_Hal_Context_t *host,FT_GPU_PLL_SOURCE_T pllsource)
@@ -322,12 +385,11 @@ ft_void_t Ft_Gpu_Hal_WrCmdBuf(Ft_Gpu_Hal_Context_t *host,ft_uint8_t *buffer,ft_u
 		if (length > MAX_CMD_FIFO_TRANSFER){
 		    length = MAX_CMD_FIFO_TRANSFER;
 		}
-      	        Ft_Gpu_Hal_CheckCmdBuffer(host,length);
-
-                Ft_Gpu_Hal_StartCmdTransfer(host,FT_GPU_WRITE,length);
+        Ft_Gpu_Hal_CheckCmdBuffer(host,length);
+        Ft_Gpu_Hal_StartCmdTransfer(host,FT_GPU_WRITE,length);
 
 #ifdef ARDUINO_PLATFORM_SPI
-                SizeTransfered = 0;
+        SizeTransfered = 0;
 		while (length--) {
                     Ft_Gpu_Hal_Transfer8(host,*buffer);
 		    buffer++;
@@ -343,7 +405,10 @@ ft_void_t Ft_Gpu_Hal_WrCmdBuf(Ft_Gpu_Hal_Context_t *host,ft_uint8_t *buffer,ft_u
    		    buffer += SizeTransfered;
 		}
 #endif
-
+#ifdef PIC32_PLATFORM
+        spiExchange((struct spiHandle *)host->hal_handle, buffer, length);
+        buffer += length;
+#endif
 		Ft_Gpu_Hal_EndTransfer(host);
 		Ft_Gpu_Hal_Updatecmdfifo(host,length);
 
@@ -440,34 +505,46 @@ ft_void_t Ft_Gpu_Hal_Powercycle(Ft_Gpu_Hal_Context_t *host, ft_bool_t up)
 	if (up)
 	{
 #ifdef MSVC_PLATFORM
-            FT_WriteGPIO(host->hal_handle, 0xBB, 0x08);//PDN set to 0 ,connect BLUE wire of MPSSE to PDN# of FT800 board
-            Ft_Gpu_Hal_Sleep(20);
+        FT_WriteGPIO(host->hal_handle, 0xBB, 0x08);//PDN set to 0 ,connect BLUE wire of MPSSE to PDN# of FT800 board
+        Ft_Gpu_Hal_Sleep(20);
 
-            FT_WriteGPIO(host->hal_handle, 0xBB, 0x88);//PDN set to 1
-            Ft_Gpu_Hal_Sleep(20);
+        FT_WriteGPIO(host->hal_handle, 0xBB, 0x88);//PDN set to 1
+        Ft_Gpu_Hal_Sleep(20);
 #endif
 #ifdef ARDUINO_PLATFORM      
-            digitalWrite(FT800_PD_N, LOW);
-            Ft_Gpu_Hal_Sleep(20);
+        digitalWrite(FT800_PD_N, LOW);
+        Ft_Gpu_Hal_Sleep(20);
 
-            digitalWrite(FT800_PD_N, HIGH);
-            Ft_Gpu_Hal_Sleep(20);
+        digitalWrite(FT800_PD_N, HIGH);
+        Ft_Gpu_Hal_Sleep(20);
+#endif
+#ifdef PIC32_PLATFORM
+        *(FT800_PD_N_PORT)->clr = 0x1u << FT800_PD_N_PIN;
+        Ft_Gpu_Hal_Sleep(20);
+        *(FT800_PD_N_PORT)->set = 0x1u << FT800_PD_N_PIN;
+        Ft_Gpu_Hal_Sleep(20);
 #endif
 	}else
 	{
 #ifdef MSVC_PLATFORM
-	        FT_WriteGPIO(host->hal_handle, 0xBB, 0x88);//PDN set to 1
-            Ft_Gpu_Hal_Sleep(20);
-            
-            FT_WriteGPIO(host->hal_handle, 0xBB, 0x08);//PDN set to 0 ,connect BLUE wire of MPSSE to PDN# of FT800 board
-            Ft_Gpu_Hal_Sleep(20);
+        FT_WriteGPIO(host->hal_handle, 0xBB, 0x88);//PDN set to 1
+        Ft_Gpu_Hal_Sleep(20);
+
+        FT_WriteGPIO(host->hal_handle, 0xBB, 0x08);//PDN set to 0 ,connect BLUE wire of MPSSE to PDN# of FT800 board
+        Ft_Gpu_Hal_Sleep(20);
 #endif
 #ifdef ARDUINO_PLATFORM
-            digitalWrite(FT800_PD_N, HIGH);
-            Ft_Gpu_Hal_Sleep(20);
-            
-            digitalWrite(FT800_PD_N, LOW);
-            Ft_Gpu_Hal_Sleep(20);
+        digitalWrite(FT800_PD_N, HIGH);
+        Ft_Gpu_Hal_Sleep(20);
+
+        digitalWrite(FT800_PD_N, LOW);
+        Ft_Gpu_Hal_Sleep(20);
+#endif
+#ifdef PIC32_PLATFORM
+        *(FT800_PD_N_PORT)->set = 0x1u << FT800_PD_N_PIN;
+        Ft_Gpu_Hal_Sleep(20);
+        *(FT800_PD_N_PORT)->clr = 0x1u << FT800_PD_N_PIN;
+        Ft_Gpu_Hal_Sleep(20);
 #endif
 	}
 }
@@ -483,13 +560,21 @@ ft_void_t Ft_Gpu_Hal_WrMemFromFlash(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,
 	    buffer++;
 	}
 #endif
-
 #ifdef MSVC_PLATFORM_SPI
 	{
 	    SPI_Write((FT_HANDLE)host->hal_handle,buffer,length,&SizeTransfered,SPI_TRANSFER_OPTIONS_SIZE_IN_BYTES);
 	}
 #endif
+#ifdef PIC32_PLATFORM
+    while (length--) {
+        ft_uint8_t byte;
 
+        byte = *buffer;
+        spiExchange((struct spiHandle *)host->hal_handle, &byte, 1u);
+        buffer++;
+    }
+    
+#endif
 
 	Ft_Gpu_Hal_EndTransfer(host);
 }
@@ -512,11 +597,17 @@ ft_void_t Ft_Gpu_Hal_WrMem(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,const ft_
 	    SPI_Write((FT_HANDLE)host->hal_handle,buffer,length,&SizeTransfered,SPI_TRANSFER_OPTIONS_SIZE_IN_BYTES);
 	}
 #endif
+#ifdef PIC32_PLATFORM
+    while (length--) {
+        ft_uint8_t byte;
 
-
+        byte = *buffer;
+        spiExchange((struct spiHandle *)host->hal_handle, &byte, 1u);
+        buffer++;
+    }
+#endif
 	Ft_Gpu_Hal_EndTransfer(host);
 }
-
 
 ft_void_t Ft_Gpu_Hal_RdMem(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr, ft_uint8_t *buffer, ft_uint32_t length)
 {
@@ -535,6 +626,9 @@ ft_void_t Ft_Gpu_Hal_RdMem(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr, ft_uint8
 	{
 	   SPI_Read((FT_HANDLE)host->hal_handle,buffer,length,&SizeTransfered,SPI_TRANSFER_OPTIONS_SIZE_IN_BYTES);
 	}
+#endif
+#ifdef PIC32_PLATFORM
+    spiExchange((struct spiHandle *)host->hal_handle, buffer, length);
 #endif
 
 	Ft_Gpu_Hal_EndTransfer(host);
@@ -589,6 +683,9 @@ ft_void_t Ft_Gpu_Hal_Sleep(ft_uint16_t ms)
 #endif
 #ifdef ARDUINO_PLATFORM
 	delay(ms);
+#endif
+#ifdef PIC32_PLATFORM
+    DelayMs(ms);
 #endif
 }
 

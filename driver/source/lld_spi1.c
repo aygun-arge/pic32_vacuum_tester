@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <xc.h>
 
-#include "HardwareProfile.h"
+#include "driver/clock.h"
 #include "driver/spi.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
@@ -20,9 +20,9 @@
 #define IEC1_SPI1RX                     (0x1u << 5)
 #define IEC1_SPI1TX                     (0x1u << 6)
 
-#define IFS1_SPI1E                      (0x1u << 4)
-#define IFS1_SPI1RX                     (0x1u << 5)
-#define IFS1_SPI1TX                     (0x1u << 6)
+#define IFS1_SPI2E                      (0x1u << 4)
+#define IFS1_SPI2RX                     (0x1u << 5)
+#define IFS1_SPI2TX                     (0x1u << 6)
 
 #define IPC7_SPI1IP_Pos                 26
 #define IPC7_SPI1IP_Msk                 (0x7u << IPC7_SPI1IP_Pos)
@@ -96,7 +96,7 @@ static void lldSpiOpen(
     SPI1CON             = 0;
     SPI1CON2            = 0;
     IEC1CLR             = IEC1_SPI1TX | IEC1_SPI1RX | IEC1_SPI1E;               /* Disable all interrupts                                   */
-    IFS1CLR             = IFS1_SPI1TX | IFS1_SPI1RX | IFS1_SPI1E;               /* Clear all interrupts                                     */
+    IFS1CLR             = IFS1_SPI2TX | IFS1_SPI2RX | IFS1_SPI2E;               /* Clear all interrupts                                     */
     data                = SPI1BUF;                                              /* Clear the receive buffer                                 */
     IPC7CLR             = IPC7_SPI1IP_Msk | IPC7_SPI1IS_Msk;                    /* Set ISR priority and clear subpriority                   */
     IPC7SET             = (config->isrPrio << IPC7_SPI1IP_Pos) & IPC7_SPI1IP_Msk;
@@ -104,12 +104,12 @@ static void lldSpiOpen(
     SPI1CONCLR          = SPI1CON_FRMEN | SPI1CON_MCLKSEL;
     SPI1CONSET          = SPI1CON_ENHBUF;
     
-    if ((config->speed * 2u) >= GetPeripheralClock()) {
+    if ((config->speed * 2u) >= clockGetPeripheralClock()) {
         SPI1BRG         = 0;                                                    /* Maximum SPI speed                                        */
     } else {
         unsigned int    divisor;
         
-        divisor  = (GetPeripheralClock() / (config->speed * 2u)) - 1u;
+        divisor  = (clockGetPeripheralClock() / (config->speed * 2u)) - 1u;
         divisor &= 0x0fffu;
         SPI1BRG         = divisor;
     }
@@ -130,7 +130,7 @@ static void lldSpiClose(
     (void)handle;
     SPI1CON             = 0;
     IEC1CLR             = IEC1_SPI1TX | IEC1_SPI1RX | IEC1_SPI1E;               /* Disable all interrupts                                   */
-    IFS1CLR             = IFS1_SPI1TX | IFS1_SPI1RX | IFS1_SPI1E;               /* Clear all interrupts                                     */
+    IFS1CLR             = IFS1_SPI2TX | IFS1_SPI2RX | IFS1_SPI2E;               /* Clear all interrupts                                     */
 #endif
 }
 

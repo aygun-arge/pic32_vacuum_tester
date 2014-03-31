@@ -43,6 +43,9 @@
 #include "USB/usb_host_msd_scsi.h"
 #include "MDD File System/FSIO.h"
 
+#include "driver/clock.h"
+#include "driver/gpio.h"
+#include "driver/spi.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -122,6 +125,10 @@ volatile BOOL deviceAttached;
 
 int main(void)
 {
+    initClockDriver();
+    initGpioDriver();
+    initSpiDriver();
+    
       #if defined(__dsPIC33EP512MU810__)||defined(__PIC24EP512GU810__)
 
     // Configure the device PLL to obtain 60 MIPS operation. The crystal

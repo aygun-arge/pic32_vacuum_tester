@@ -16,6 +16,7 @@
 #include <stddef.h>
 
 #include "driver/lld_spi1.h"
+#include "driver/lld_spi2.h"
 #include "driver/lld_spis.h"
 
 /*===============================================================  MACRO's  ==*/
