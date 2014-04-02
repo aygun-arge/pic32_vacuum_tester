@@ -17,7 +17,7 @@
 
 #if   (((__PIC32_FEATURE_SET__ >= 100) && (__PIC32_FEATURE_SET__ <= 299)))
 #define SPI2_PIN_TABLE(entry)                                                   \
-    entry(SPI2_SDI_RPB2,            0x00,           NULL)                       \
+    entry(SPI2_SDI_RPB2,            0x04,           NULL)                       \
     entry(SPI2_SDI_RPB6,            0x01,           NULL)                       \
     entry(SPI2_SDO_RPB5,            0,              &RPB5R)                     \
     entry(SPI2_SS_RPC2,             0,              &RPC2R)                     \

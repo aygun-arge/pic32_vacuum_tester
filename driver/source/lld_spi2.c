@@ -35,9 +35,11 @@
 #define SPI2CON_FRMEN                   (0x1u << 31)
 
 #define SPI2STAT_SPITBF                 (0x1u << 1)
+#define SPI2STAT_SPITBE                 (0x1u << 3)
 #define SPI2STAT_SPIRBE                 (0x1u << 5)
 #define SPI2STAT_SPIROV                 (0x1u << 6)
 #define SPI2STAT_SPITUR                 (0x1u << 8)
+#define SPI2STAT_SPIBUSY                (0x1u << 11)
 
 #define SPI2_PIN_ADDRESS(id, value, address)                                    \
     (volatile unsigned int *)address,
@@ -169,8 +171,10 @@ static uint32_t lldSpiExchange(
 
     (void)handle;
     SPI2BUF = data;
+    while ((SPI2STAT & SPI2STAT_SPIRBE) != 0u);
+    data = SPI2BUF;
 
-    return (SPI2BUF);
+    return (data);
 }
 
 static void lldSpiSSActivate(
@@ -189,6 +193,8 @@ static void lldSpiSSDeactivate(
     struct spiHandle * handle) {
 
     if ((handle->flags & SPI_MASTER_SS) == 0u) {
+        while ((SPI2STAT & SPI2STAT_SPIBUSY) != 0u);
+        
         if ((handle->flags & SPI_MASTER_SS_ACTIVE_HIGH) != 0u) {
             *ssPort->clr = ssPinMask;
         } else {

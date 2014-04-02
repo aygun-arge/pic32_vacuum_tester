@@ -33,6 +33,8 @@ ft_bool_t  Ft_Gpu_Hal_Init(Ft_Gpu_HalInit_t *halinit)
 	}
 #endif
 #ifdef PIC32_PLATFORM
+    (void)halinit;
+    
     *(FT800_INT_PORT)->tris  |=   0x1u << FT800_INT_PIN;
     *(FT800_PD_N_PORT)->tris &= ~(0x1u << FT800_PD_N_PIN);
 #endif
@@ -82,7 +84,7 @@ ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
 #endif
 	host->ft_cmd_fifo_wp = host->ft_dl_buff_wp = 0;
 	host->status = FT_GPU_HAL_OPENED;
-	return TRUE;
+	return (true);
 }
 ft_void_t  Ft_Gpu_Hal_Close(Ft_Gpu_Hal_Context_t *host)
 {

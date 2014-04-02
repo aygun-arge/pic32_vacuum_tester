@@ -14,6 +14,9 @@ ft_void_t Ft_Gpu_Copro_SendCmd(Ft_Gpu_Hal_Context_t *phost,ft_uint32_t cmd)
    Ft_Gpu_Hal_WrCmd32(phost,cmd);
 #endif
 #endif
+#ifdef PIC32_PLATFORM
+   Ft_Gpu_Hal_WrCmd32(phost,cmd);
+#endif
 }
 
 static ft_void_t Ft_Gpu_CoCmd_SendStr(Ft_Gpu_Hal_Context_t *phost,const ft_char8_t *s)
@@ -30,6 +33,11 @@ static ft_void_t Ft_Gpu_CoCmd_SendStr(Ft_Gpu_Hal_Context_t *phost,const ft_char8
   length = strlen(s) + 1;//last for the null termination 
   Ft_Gpu_Hal_WrCmdBuf(phost,(ft_uint8_t*)s,length);
 #endif  
+#endif
+#ifdef PIC32_PLATFORM
+  ft_uint16_t length = 0;
+  length = strlen(s) + 1;//last for the null termination
+  Ft_Gpu_Hal_WrCmdBuf(phost,(ft_uint8_t*)s,length);
 #endif
 }
 

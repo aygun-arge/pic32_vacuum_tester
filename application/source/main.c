@@ -1,43 +1,8 @@
-/********************************************************************
- FileName:     main.c
- Dependencies: See INCLUDES section
- Processor:		PIC18, PIC24, and PIC32 USB Microcontrollers
- Hardware:		This demo is natively intended to be used on Microchip USB demo
- 				boards supported by the MCHPFSUSB stack.  See release notes for
- 				support matrix.  This demo can be modified for use on other hardware
- 				platforms.
- Complier:  	Microchip C18 (for PIC18), C30 (for PIC24), C32 (for PIC32)
- Company:		Microchip Technology, Inc.
 
- Software License Agreement:
+#include <xc.h>
 
- The software supplied herewith by Microchip Technology Incorporated
- (the �Company�) for its PIC� Microcontroller is intended and
- supplied to you, the Company�s customer, for use solely and
- exclusively on Microchip PIC Microcontroller products. The
- software is owned by the Company and/or its supplier, and is
- protected under applicable copyright laws. All rights are reserved.
- Any use in violation of the foregoing restrictions may subject the
- user to criminal sanctions under applicable laws, as well as to
- civil liability for the breach of the terms and conditions of this
- license.
+#include "config/mcu_config.h"
 
- THIS SOFTWARE IS PROVIDED IN AN �AS IS� CONDITION. NO WARRANTIES,
- WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
-
-********************************************************************
- File Description:
-
- Change History:
-  Rev   Description
-  1.0   Initial release
-  2.1   Updated for simplicity and to use common
-                     coding style
-********************************************************************/
 #include "USB/usb.h"
 #include "USB/usb_host_msd.h"
 #include "USB/usb_host_msd_scsi.h"
@@ -47,220 +12,97 @@
 #include "driver/gpio.h"
 #include "driver/spi.h"
 
-// *****************************************************************************
-// *****************************************************************************
-// Configuration Bits
-// *****************************************************************************
-// *****************************************************************************
+#include "FT_Platform.h"
 
-#if defined __C30__ || defined __XC16__
-    #if defined(__PIC24FJ256GB110__)
-        _CONFIG2(FNOSC_PRIPLL & POSCMOD_HS & PLL_96MHZ_ON & PLLDIV_DIV2 & IESO_OFF) // Primary HS OSC with PLL, USBPLL /2
-        _CONFIG1(JTAGEN_OFF & FWDTEN_OFF & ICS_PGx2)   // JTAG off, watchdog timer off
-    #elif defined(__PIC24FJ64GB004__)
-        _CONFIG1(WDTPS_PS1 & FWPSA_PR32 & WINDIS_OFF & FWDTEN_OFF & ICS_PGx1 & GWRP_OFF & GCP_OFF & JTAGEN_OFF)
-        _CONFIG2(POSCMOD_HS & I2C1SEL_PRI & IOL1WAY_OFF & OSCIOFNC_ON & FCKSM_CSDCMD & FNOSC_PRIPLL & PLL96MHZ_ON & PLLDIV_DIV2 & IESO_OFF)
-        _CONFIG3(WPFP_WPFP0 & SOSCSEL_SOSC & WUTSEL_LEG & WPDIS_WPDIS & WPCFG_WPCFGDIS & WPEND_WPENDMEM)
-        _CONFIG4(DSWDTPS_DSWDTPS3 & DSWDTOSC_LPRC & RTCOSC_SOSC & DSBOREN_OFF & DSWDTEN_OFF)
-    #elif defined(__PIC24FJ256GB106__)
-        _CONFIG1( JTAGEN_OFF & GCP_OFF & GWRP_OFF & FWDTEN_OFF & ICS_PGx2) 
-        _CONFIG2( PLL_96MHZ_ON & IESO_OFF & FCKSM_CSDCMD & OSCIOFNC_OFF & POSCMOD_HS & FNOSC_PRIPLL & PLLDIV_DIV3 & IOL1WAY_ON)
-    #elif defined(__PIC24FJ256DA210__) || defined(__PIC24FJ256GB210__)
-        _CONFIG1(FWDTEN_OFF & ICS_PGx2 & GWRP_OFF & GCP_OFF & JTAGEN_OFF)
-        _CONFIG2(POSCMOD_HS & IOL1WAY_ON & OSCIOFNC_ON & FCKSM_CSDCMD & FNOSC_PRIPLL & PLL96MHZ_ON & PLLDIV_DIV2 & IESO_OFF)
-    #elif defined(__dsPIC33EP512MU810__)||defined(__PIC24EP512GU810__)
-        _FOSCSEL(FNOSC_FRC);
-        _FOSC(FCKSM_CSECMD & OSCIOFNC_OFF & POSCMD_XT);
-        _FWDT(FWDTEN_OFF);
-    #elif defined(__PIC24FJ64GB502__)
-        _CONFIG1(WDTPS_PS1 & FWPSA_PR32 & WINDIS_OFF & FWDTEN_OFF & ICS_PGx1 & GWRP_OFF & GCP_OFF & JTAGEN_OFF)
-	_CONFIG2(I2C1SEL_PRI & IOL1WAY_OFF & FCKSM_CSDCMD & FNOSC_PRIPLL & PLL96MHZ_ON & PLLDIV_DIV2 & IESO_OFF)
-	_CONFIG3(WPFP_WPFP0 & SOSCSEL_SOSC & WUTSEL_LEG & WPDIS_WPDIS & WPCFG_WPCFGDIS & WPEND_WPENDMEM)
-	_CONFIG4(DSWDTPS_DSWDTPS3 & DSWDTOSC_LPRC & RTCOSC_SOSC & DSBOREN_OFF & DSWDTEN_OFF)   
-    #endif
-#elif defined( __PIC32MX__ )
-#include <xc.h>
+static volatile bool deviceAttached;
 
-// DEVCFG3
-// USERID = No Setting
-#pragma config PMDL1WAY = OFF           // Peripheral Module Disable Configuration (Allow multiple reconfigurations)
-#pragma config IOL1WAY = OFF            // Peripheral Pin Select Configuration (Allow multiple reconfigurations)
-#pragma config FUSBIDIO = ON            // USB USID Selection (Controlled by the USB Module)
-#pragma config FVBUSONIO = ON           // USB VBUS ON Selection (Controlled by USB Module)
+static Ft_Gpu_Hal_Context_t host;
+static struct spiHandle hostSpi;
 
-// DEVCFG2
-#pragma config FPLLIDIV = DIV_2         // PLL Input Divider (2x Divider)
-#pragma config FPLLMUL = MUL_24         // PLL Multiplier (24x Multiplier)
-#pragma config UPLLIDIV = DIV_2         // USB PLL Input Divider (2x Divider)
-#pragma config UPLLEN = ON              // USB PLL Enable (Enabled)
-#pragma config FPLLODIV = DIV_2         // System PLL Output Clock Divider (PLL Divide by 2)
+/* Global variables for display resolution to support various display panels */
+/* Default is WQVGA - 480x272 */
+static ft_int16_t FT_DispWidth = 480;
+static ft_int16_t FT_DispHeight = 272;
+static ft_int16_t FT_DispHCycle =  548;
+static ft_int16_t FT_DispHOffset = 43;
+static ft_int16_t FT_DispHSync0 = 0;
+static ft_int16_t FT_DispHSync1 = 41;
+static ft_int16_t FT_DispVCycle = 292;
+static ft_int16_t FT_DispVOffset = 12;
+static ft_int16_t FT_DispVSync0 = 0;
+static ft_int16_t FT_DispVSync1 = 10;
+static ft_uint8_t FT_DispPCLK = 5;
+static ft_char8_t FT_DispSwizzle = 0;
+static ft_char8_t FT_DispPCLKPol = 1;
 
-// DEVCFG1
-#pragma config FNOSC = PRIPLL           // Oscillator Selection Bits (Primary Osc w/PLL (XT+,HS+,EC+PLL))
-#pragma config FSOSCEN = OFF            // Secondary Oscillator Enable (Disabled)
-#pragma config IESO = OFF               // Internal/External Switch Over (Disabled)
-#pragma config POSCMOD = HS             // Primary Oscillator Configuration (HS osc mode)
-#pragma config OSCIOFNC = OFF           // CLKO Output Signal Active on the OSCO Pin (Disabled)
-#pragma config FPBDIV = DIV_1           // Peripheral Clock Divisor (Pb_Clk is Sys_Clk/8)
-#pragma config FCKSM = CSDCMD           // Clock Switching and Monitor Selection (Clock Switch Disable, FSCM Disabled)
-#pragma config WDTPS = PS1048576        // Watchdog Timer Postscaler (1:1048576)
-#pragma config WINDIS = OFF             // Watchdog Timer Window Enable (Watchdog Timer is in Non-Window Mode)
-#pragma config FWDTEN = OFF             // Watchdog Timer Enable (WDT Disabled (SWDTEN Bit Controls))
-#pragma config FWDTWINSZ = WISZ_25      // Watchdog Timer Window Size (Window Size is 25%)
-
-// DEVCFG0
-#pragma config JTAGEN = OFF             // JTAG Enable (JTAG Disabled)
-#pragma config ICESEL = ICS_PGx3        // ICE/ICD Comm Channel Select (Communicate on PGEC3/PGED3)
-#pragma config PWP = OFF                // Program Flash Write Protect (Disable)
-#pragma config BWP = OFF                // Boot Flash Write Protect bit (Protection Disabled)
-#pragma config CP = OFF                 // Code Protect (Protection Disabled)
-#else
-    #error Cannot define configuration bits.
-#endif
-
-FSFILE * myFile;
-BYTE myData[512];
-size_t numBytes;
-volatile BOOL deviceAttached;
-
-int main(void)
+static void initDisplay(void)
 {
-    initClockDriver();
-    initGpioDriver();
-    initSpiDriver();
-    
-      #if defined(__dsPIC33EP512MU810__)||defined(__PIC24EP512GU810__)
-
-    // Configure the device PLL to obtain 60 MIPS operation. The crystal
-    // frequency is 8MHz. Divide 8MHz by 2, multiply by 60 and divide by
-    // 2. This results in Fosc of 120MHz. The CPU clock frequency is
-    // Fcy = Fosc/2 = 60MHz. Wait for the Primary PLL to lock and then
-    // configure the auxilliary PLL to provide 48MHz needed for USB 
-    // Operation.
-
-	PLLFBD = 38;				/* M  = 60	*/
-	CLKDIVbits.PLLPOST = 0;		/* N1 = 2	*/
-	CLKDIVbits.PLLPRE = 0;		/* N2 = 2	*/
-	OSCTUN = 0;			
-
-    /*	Initiate Clock Switch to Primary
-     *	Oscillator with PLL (NOSC= 0x3)*/
-	
-    __builtin_write_OSCCONH(0x03);		
-	__builtin_write_OSCCONL(0x01);
-	
-	while (OSCCONbits.COSC != 0x3);       
-
-    // Configuring the auxiliary PLL, since the primary
-    // oscillator provides the source clock to the auxiliary
-    // PLL, the auxiliary oscillator is disabled. Note that
-    // the AUX PLL is enabled. The input 8MHz clock is divided
-    // by 2, multiplied by 24 and then divided by 2. Wait till 
-    // the AUX PLL locks.
-
-    ACLKCON3 = 0x24C1;   
-    ACLKDIV3 = 0x7;
-    
-    ACLKCON3bits.ENAPLL = 1;
-    while(ACLKCON3bits.APLLCK != 1); 
-    
-    /* Set RB5 as Digital port 
-    and enable the VBUS switch*/
-    ANSELBbits.ANSB5 = 0;
-    TRISBbits.TRISB5 = 0;
-    LATBbits.LATB5 = 1;
-
-    #endif
-    
-    #if defined(__PIC32MX__)
-        {
-            //int  value;
-    
-            //value = SYSTEMConfigWaitStatesAndPB( GetSystemClock() );
-    
-            // Enable the cache for the best performance
-            //CheKseg0CacheOn();
-    
-            INTEnableSystemMultiVectoredInt();
-    
-            //value = OSCCON;
-            //while (!(value & 0x00000020))
-            //{
-                //value = OSCCON;    // Wait for PLL lock to stabilize
-            //}
-        }
-
-    #endif
-
-   #if defined(__PIC24FJ64GB004__) || defined(__PIC24FJ256DA210__)
-	//On the PIC24FJ64GB004 Family of USB microcontrollers, the PLL will not power up and be enabled
-	//by default, even if a PLL enabled oscillator configuration is selected (such as HS+PLL).
-	//This allows the device to power up at a lower initial operating frequency, which can be
-	//advantageous when powered from a source which is not gauranteed to be adequate for 32MHz
-	//operation.  On these devices, user firmware needs to manually set the CLKDIV<PLLEN> bit to
-	//power up the PLL.
+    /* Boot up for FT800 followed by graphics primitive sample cases */
+    /* Initial boot up DL - make the back ground green color */
+    static const ft_uint8_t bootUp[12] =
     {
-        unsigned int pll_startup_counter = 600;
-        CLKDIVbits.PLLEN = 1;
-        while(pll_startup_counter--);
-    }
+        255,255,255,2, /* GPU instruction CLEAR_COLOR_RGB */
+        7,0,0,38,      /* GPU instruction CLEAR   */
+        0,0,0,0,       /* GPU instruction DISPLAY */
+    };
+    Ft_Gpu_HalInit_t halinit;
 
-    //Device switches over automatically to PLL output after PLL is locked and ready.
-    #endif
+    host.hal_handle = &hostSpi;
+    Ft_Gpu_Hal_Init(&halinit);
+    Ft_Gpu_Hal_Open(&host);
 
-    deviceAttached = FALSE;
+    /* Do a power cycle for safer side */
+    Ft_Gpu_Hal_Powercycle(&host, FT_TRUE);
+    Ft_Gpu_Hal_Rd16(&host, RAM_G);
 
-    //Initialize the stack
-    USBInitialize(0);
+    /* Set the clk to external clock */
+    Ft_Gpu_HostCommand(&host, FT_GPU_EXTERNAL_OSC);
+    Ft_Gpu_Hal_Sleep(10);
 
-    #if defined(DEBUG_MODE)
-        // PPS - Configure U2RX - put on pin 49 (RP10)
-        RPINR19bits.U2RXR = 10;
+    /* Switch PLL output to 48MHz */
+    Ft_Gpu_HostCommand(&host, FT_GPU_PLL_48M);
+    Ft_Gpu_Hal_Sleep(10);
 
-        // PPS - Configure U2TX - put on pin 50 (RP17)
-        RPOR8bits.RP17R = 5;
+    /* Do a core reset for safer side */
+    Ft_Gpu_HostCommand(&host, FT_GPU_CORE_RESET);
 
-        UART2Init();
-    #endif
+    /* Access address 0 to wake up the FT800 */
+    Ft_Gpu_HostCommand(&host, FT_GPU_ACTIVE_M);
+    Ft_Gpu_Hal_Wr8(&host, REG_GPIO_DIR, 0x80 | Ft_Gpu_Hal_Rd8(&host, REG_GPIO_DIR));
+    Ft_Gpu_Hal_Wr8(&host, REG_GPIO, 0x080 | Ft_Gpu_Hal_Rd8(&host, REG_GPIO));
 
-
-    while(1)
     {
-        //USB stack process function
-        USBTasks();
-        U1OTGCONbits.VBUSON = 1;
-
-        //if thumbdrive is plugged in
-        if(USBHostMSDSCSIMediaDetect())
-        {
-            deviceAttached = TRUE;
-
-            //now a device is attached
-            //See if the device is attached and in the right format
-            if(FSInit())
-            {
-                //Opening a file in mode "w" will create the file if it doesn't
-                //  exist.  If the file does exist it will delete the old file
-                //  and create a new one that is blank.
-                myFile = FSfopen("test.txt","w");
-
-                //Write some data to the new file.
-                FSfwrite("This is a test.",1,15,myFile);
-                
-
-                //Always make sure to close the file so that the data gets
-                //  written to the drive.
-                FSfclose(myFile);
-
-                //Just sit here until the device is removed.
-                while(deviceAttached == TRUE)
-                {
-                    USBTasks();
-                }
-            }
+        ft_uint8_t chipid;
+        /* Read Register ID to check if FT800 is ready */
+        chipid = Ft_Gpu_Hal_Rd8(&host, REG_ID);
+        while (chipid != 0x7C) {
+            chipid = Ft_Gpu_Hal_Rd8(&host, REG_ID);
         }
     }
-    return 0;
+    Ft_Gpu_Hal_Wr16(&host, REG_HCYCLE, FT_DispHCycle);
+    Ft_Gpu_Hal_Wr16(&host, REG_HOFFSET, FT_DispHOffset);
+    Ft_Gpu_Hal_Wr16(&host, REG_HSYNC0, FT_DispHSync0);
+    Ft_Gpu_Hal_Wr16(&host, REG_HSYNC1, FT_DispHSync1);
+    Ft_Gpu_Hal_Wr16(&host, REG_VCYCLE, FT_DispVCycle);
+    Ft_Gpu_Hal_Wr16(&host, REG_VOFFSET, FT_DispVOffset);
+    Ft_Gpu_Hal_Wr16(&host, REG_VSYNC0, FT_DispVSync0);
+    Ft_Gpu_Hal_Wr16(&host, REG_VSYNC1, FT_DispVSync1);
+    Ft_Gpu_Hal_Wr8(&host, REG_SWIZZLE, FT_DispSwizzle);
+    Ft_Gpu_Hal_Wr8(&host, REG_PCLK_POL, FT_DispPCLKPol);
+    Ft_Gpu_Hal_Wr8(&host, REG_PCLK, FT_DispPCLK);                               /* after this display is visible on the LCD */
+    Ft_Gpu_Hal_Wr16(&host, REG_HSIZE, FT_DispWidth);
+    Ft_Gpu_Hal_Wr16(&host, REG_VSIZE, FT_DispHeight);
+
+    /* Touch configuration - configure the resistance value to 1200 - this value is specific to customer requirement and derived by experiment */
+    Ft_Gpu_Hal_Wr16(&host, REG_TOUCH_RZTHRESH,1200);
+
+    Ft_Gpu_Hal_Wr8(&host, REG_GPIO_DIR,0xff);
+    Ft_Gpu_Hal_Wr8(&host, REG_GPIO,0x0ff);
+
+    /*It is optional to clear the screen here*/
+    Ft_Gpu_Hal_WrMem(&host, RAM_DL, (ft_uint8_t *)bootUp, sizeof(bootUp));
+    Ft_Gpu_Hal_Wr8(&host, REG_DLSWAP, DLSWAP_FRAME);
+    Ft_Gpu_Hal_Sleep(1000);//Show the booting up screen.
 }
 
 
@@ -278,7 +120,7 @@ int main(void)
     This is the application event handler.  It is called when the stack has
     an event that needs to be handled by the application layer rather than
     by the client driver.  If the application is able to handle the event, it
-    returns TRUE.  Otherwise, it returns FALSE.
+    returns true.  Otherwise, it returns false.
 
   Precondition:
     None
@@ -290,8 +132,8 @@ int main(void)
     DWORD size      - Size of the event-specific data
 
   Return Values:
-    TRUE    - The event was handled
-    FALSE   - The event was not handled
+    true    - The event was handled
+    false   - The event was not handled
 
   Remarks:
     The application may also implement an event handling routine if it
@@ -300,56 +142,102 @@ int main(void)
     macro as the name of that function.
   ***************************************************************************/
 
-BOOL USB_ApplicationEventHandler( BYTE address, USB_EVENT event, void *data, DWORD size )
+BOOL USB_ApplicationEventHandler(BYTE address, USB_EVENT event, void *data, DWORD size)
 {
-    switch( event )
-    {
+    switch (event) {
         case EVENT_VBUS_REQUEST_POWER:
             // The data pointer points to a byte that represents the amount of power
             // requested in mA, divided by two.  If the device wants too much power,
             // we reject it.
-            return TRUE;
+            return (true);
 
         case EVENT_VBUS_RELEASE_POWER:
             // Turn off Vbus power.
             // The PIC24F with the Explorer 16 cannot turn off Vbus through software.
 
             //This means that the device was removed
-            deviceAttached = FALSE;
-            return TRUE;
+            deviceAttached = false;
+            return (true);
             break;
 
         case EVENT_HUB_ATTACH:
-            return TRUE;
+            return (true);
             break;
 
         case EVENT_UNSUPPORTED_DEVICE:
-            return TRUE;
+            return (true);
             break;
 
         case EVENT_CANNOT_ENUMERATE:
             //UART2PrintString( "\r\n***** USB Error - cannot enumerate device *****\r\n" );
-            return TRUE;
+            return (true);
             break;
 
         case EVENT_CLIENT_INIT_ERROR:
             //UART2PrintString( "\r\n***** USB Error - client driver initialization error *****\r\n" );
-            return TRUE;
+            return (true);
             break;
 
         case EVENT_OUT_OF_MEMORY:
             //UART2PrintString( "\r\n***** USB Error - out of heap memory *****\r\n" );
-            return TRUE;
+            return (true);
             break;
 
         case EVENT_UNSPECIFIED_ERROR:   // This should never be generated.
             //UART2PrintString( "\r\n***** USB Error - unspecified *****\r\n" );
-            return TRUE;
+            return (true);
             break;
 
         default:
             break;
     }
 
-    return FALSE;
+    return false;
 }
+
+int main(void) {
+    initClockDriver();
+    initGpioDriver();
+    initSpiDriver();
+    initDisplay();
+    INTEnableSystemMultiVectoredInt();
+    deviceAttached = false;
+
+    //Initialize the stack
+    USBInitialize(0);
+
+    while (true) {
+        //USB stack process function
+        USBTasks();
+
+        //if thumbdrive is plugged in
+        if (USBHostMSDSCSIMediaDetect()) {
+            deviceAttached = true;
+
+            //now a device is attached
+            //See if the device is attached and in the right format
+            if (FSInit()) {
+                FSFILE * myFile;
+                //Opening a file in mode "w" will create the file if it doesn't
+                //  exist.  If the file does exist it will delete the old file
+                //  and create a new one that is blank.
+                myFile = FSfopen("test.txt","w");
+
+                //Write some data to the new file.
+                FSfwrite("This is a test.",1,15,myFile);
+
+                //Always make sure to close the file so that the data gets
+                //  written to the drive.
+                FSfclose(myFile);
+
+                //Just sit here until the device is removed.
+                while (deviceAttached == true) {
+                    USBTasks();
+                }
+            }
+        }
+    }
+
+    return (0);
+}
+
