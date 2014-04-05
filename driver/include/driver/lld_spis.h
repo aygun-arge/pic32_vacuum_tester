@@ -17,12 +17,16 @@
 
 #if   (((__PIC32_FEATURE_SET__ >= 100) && (__PIC32_FEATURE_SET__ <= 299)))
 #define SPIS_PIN_TABLE(entry)                                                   \
+    entry(SPIS_SDI_C4,      4,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
     entry(SPIS_SDI_C6,      6,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
     entry(SPIS_SDI_C7,      7,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
+    entry(SPIS_SDO_C3,      3,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
     entry(SPIS_SDO_C8,      8,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
     entry(SPIS_SDO_B8,      8,  &PORTB,     &TRISB,     &PORTBCLR,  &PORTBSET)  \
     entry(SPIS_SCK_B9,      9,  &PORTB,     &TRISB,     &PORTBCLR,  &PORTBSET)  \
-    entry(SPIS_SS_B10,      10, &PORTB,     &TRISB,     &PORTBCLR,  &PORTBSET)
+    entry(SPIS_SCK_C6,      6,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  \
+    entry(SPIS_SS_B10,      10, &PORTB,     &TRISB,     &PORTBCLR,  &PORTBSET)  \
+    entry(SPIS_SS_C5,       5,  &PORTC,     &TRISC,     &PORTCCLR,  &PORTCSET)  
 #elif (((__PIC32_FEATURE_SET__ >= 300) && (__PIC32_FEATURE_SET__ <= 499)))
 #elif (((__PIC32_FEATURE_SET__ >= 500) && (__PIC32_FEATURE_SET__ <= 799)))
 #define SPIS_PIN_TABLE(entry)                                                   \

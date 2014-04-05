@@ -19,7 +19,9 @@
 #define SPI2_PIN_TABLE(entry)                                                   \
     entry(SPI2_SDI_RPB2,            0x04,           NULL)                       \
     entry(SPI2_SDI_RPB6,            0x01,           NULL)                       \
+    entry(SPI2_SDI_RPC4,            0x01,           NULL)                       \
     entry(SPI2_SDO_RPB5,            0,              &RPB5R)                     \
+    entry(SPI2_SDO_RPC3,            0,              &RPC3R)                     \
     entry(SPI2_SS_RPC2,             0,              &RPC2R)                     \
     entry(SPI2_SS_RPC2_GPIO,        2,              &GpioC)
 #elif (((__PIC32_FEATURE_SET__ >= 300) && (__PIC32_FEATURE_SET__ <= 499)))
