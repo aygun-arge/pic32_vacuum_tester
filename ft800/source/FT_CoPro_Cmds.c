@@ -64,7 +64,6 @@ ft_void_t Ft_Gpu_CoCmd_Text(Ft_Gpu_Hal_Context_t *phost,ft_int16_t x, ft_int16_t
 {
   Ft_Gpu_CoCmd_StartFunc(phost,FT_CMD_SIZE*3 + strlen(s) + 1);
   Ft_Gpu_Copro_SendCmd(phost, CMD_TEXT);
-  //Ft_Gpu_Copro_SendCmd(phost, (((ft_uint32_t)y<<16)|(ft_uint32_t)x));
   Ft_Gpu_Copro_SendCmd(phost, (((ft_uint32_t)y<<16)|(x & 0xffff)));
   Ft_Gpu_Copro_SendCmd(phost, (((ft_uint32_t)options<<16)|(ft_uint32_t)font));
   Ft_Gpu_CoCmd_SendStr(phost, s);

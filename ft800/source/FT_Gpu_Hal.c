@@ -2,8 +2,6 @@
 #include "USB/usb_hal_pic32.h"
 #include "driver/gpio.h"
 
-static struct spiHandle FT_SpiHandle;
-
 /* API to initialize the SPI interface */
 ft_bool_t  Ft_Gpu_Hal_Init(Ft_Gpu_HalInit_t *halinit)
 {
@@ -189,11 +187,13 @@ ft_uint8_t    Ft_Gpu_Hal_TransferString(Ft_Gpu_Hal_Context_t *host,const ft_char
 {
     ft_uint16_t length = strlen(string);
     while(length --){
-       Ft_Gpu_Hal_Transfer8(host,*string);
-       string ++;
+        Ft_Gpu_Hal_Transfer8(host, *string);
+        string ++;
     }
     //Append one null as ending flag
     Ft_Gpu_Hal_Transfer8(host,0);
+
+    return (0);
 }
 
 
@@ -408,8 +408,16 @@ ft_void_t Ft_Gpu_Hal_WrCmdBuf(Ft_Gpu_Hal_Context_t *host,ft_uint8_t *buffer,ft_u
 		}
 #endif
 #ifdef PIC32_PLATFORM
-        spiExchange((struct spiHandle *)host->hal_handle, buffer, length);
-        buffer += length;
+        {
+            ft_uint32_t sizeToTransfer;
+
+            sizeToTransfer = length;
+
+            while (sizeToTransfer--) {
+                Ft_Gpu_Hal_Transfer8(host, *buffer);
+                buffer++;
+            }
+        }
 #endif
 		Ft_Gpu_Hal_EndTransfer(host);
 		Ft_Gpu_Hal_Updatecmdfifo(host,length);
