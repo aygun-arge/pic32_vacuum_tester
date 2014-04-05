@@ -7,11 +7,26 @@
           <itemPath>application/include/config/usb_config.h</itemPath>
           <itemPath>application/include/config/FSconfig.h</itemPath>
           <itemPath>application/include/config/HardwareProfile.h</itemPath>
+          <itemPath>application/include/config/mcu_config.h</itemPath>
+          <itemPath>application/include/config/software_profile.h</itemPath>
         </logicalFolder>
+        <itemPath>application/include/app_config.h</itemPath>
+        <itemPath>application/include/app_gui.h</itemPath>
+        <itemPath>application/include/app_usb.h</itemPath>
+        <itemPath>application/include/app_psensor.h</itemPath>
+        <itemPath>application/include/app_motor.h</itemPath>
+        <itemPath>application/include/app_battery.h</itemPath>
+        <itemPath>application/include/app_buzzer.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
-        <itemPath>application/source/usb_config.c</itemPath>
+        <itemPath>application/source/app_config.c</itemPath>
+        <itemPath>application/source/app_gui.c</itemPath>
+        <itemPath>application/source/app_usb.c</itemPath>
+        <itemPath>application/source/app_psensor.c</itemPath>
+        <itemPath>application/source/app_motor.c</itemPath>
+        <itemPath>application/source/app_battery.c</itemPath>
+        <itemPath>application/source/app_buzzer.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -23,6 +38,9 @@
           <itemPath>driver/include/driver/lld_spi2.h</itemPath>
           <itemPath>driver/include/driver/clock.h</itemPath>
           <itemPath>driver/include/driver/gpio.h</itemPath>
+          <itemPath>driver/include/driver/intr.h</itemPath>
+          <itemPath>driver/include/driver/adc.h</itemPath>
+          <itemPath>driver/include/driver/s25fl.h</itemPath>
         </logicalFolder>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
@@ -32,6 +50,10 @@
         <itemPath>driver/source/lld_spi2.c</itemPath>
         <itemPath>driver/source/clock.c</itemPath>
         <itemPath>driver/source/gpio.c</itemPath>
+        <itemPath>driver/source/intr.c</itemPath>
+        <itemPath>driver/source/adc.c</itemPath>
+        <itemPath>driver/source/s25fl.c</itemPath>
+        <itemPath>driver/source/i2c.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="ft800" displayName="ft800" projectFiles="true">
@@ -140,7 +162,7 @@
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
       </makeCustomizationType>
       <C32>
-        <property key="additional-warnings" value="false"/>
+        <property key="additional-warnings" value="true"/>
         <property key="enable-app-io" value="false"/>
         <property key="enable-omit-frame-pointer" value="false"/>
         <property key="enable-symbols" value="true"/>
@@ -189,7 +211,7 @@
         <property key="oXC32ld-extra-opts" value=""/>
         <property key="optimization-level" value=""/>
         <property key="preprocessor-macros" value=""/>
-        <property key="remove-unused-sections" value="false"/>
+        <property key="remove-unused-sections" value="true"/>
         <property key="report-memory-usage" value="true"/>
         <property key="stack-size" value=""/>
         <property key="symbol-stripping" value=""/>
@@ -264,6 +286,7 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
