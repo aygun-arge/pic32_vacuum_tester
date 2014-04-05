@@ -28,6 +28,7 @@ struct gpio {
     volatile unsigned int * invert;
     volatile unsigned int * pullup;
     volatile unsigned int * pulldown;
+    volatile unsigned int * ansel;
 };
 
 /*======================================================  GLOBAL VARIABLES  ==*/
