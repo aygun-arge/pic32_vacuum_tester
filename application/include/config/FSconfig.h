@@ -36,7 +36,7 @@
 #ifndef _FS_DEF_
 
 
-#include "HardwareProfile.h"
+#include "software_profile.h"
 
 /***************************************************************************/
 /*   Note:  There are likely pin definitions present in the header file    */
