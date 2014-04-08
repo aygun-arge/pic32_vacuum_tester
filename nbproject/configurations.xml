@@ -73,6 +73,7 @@
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
+      <itemPath>p32MX250F128D.ld</itemPath>
     </logicalFolder>
     <logicalFolder name="mla" displayName="mla" projectFiles="true">
       <logicalFolder name="include" displayName="include" projectFiles="true">
@@ -216,7 +217,7 @@
         <property key="stack-size" value=""/>
         <property key="symbol-stripping" value=""/>
         <property key="trace-symbols" value=""/>
-        <property key="warn-section-align" value="false"/>
+        <property key="warn-section-align" value="true"/>
       </C32-LD>
       <C32CPP>
         <property key="additional-warnings" value="false"/>
@@ -286,7 +287,6 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
