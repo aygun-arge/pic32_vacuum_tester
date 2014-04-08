@@ -43,6 +43,7 @@ int main(void) {
     initPSensorModule();
     initMotorModule();
 
+    /*--  Start up tone  -----------------------------------------------------*/
     buzzerTone(20);
 
     while (true) {
