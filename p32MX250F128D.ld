@@ -83,10 +83,10 @@ _ebase_address = 0x9D01F000;
  * _GEN_EXCPT_ADDR                -- General Exception Vector
  *************************************************************************/
 _ORIGINAL_RESET_ADDR           = 0xBFC00000;
-_RESET_ADDR                    = 0x9D006000;
-_BEV_EXCPT_ADDR                = 0x9D006380;
-_DBG_EXCPT_ADDR                = 0x9D006480;
-_DBG_CODE_ADDR                 = 0x9D006490;
+_RESET_ADDR                    = 0x9D008000;
+_BEV_EXCPT_ADDR                = 0x9D008380;
+_DBG_EXCPT_ADDR                = 0x9D008480;
+_DBG_CODE_ADDR                 = 0x9D008490;
 _DBG_CODE_SIZE                 = 0x760;
 _GEN_EXCPT_ADDR                = _ebase_address + 0x180;
 
@@ -103,13 +103,13 @@ _GEN_EXCPT_ADDR                = _ebase_address + 0x180;
  *************************************************************************/
 MEMORY
 {
-  kseg0_boot_mem              : ORIGIN = 0x9D006490, LENGTH = 0x0
-  debug_exec_mem              : ORIGIN = 0x9D006490, LENGTH = 0x760
-  kseg0_program_mem     (rx)  : ORIGIN = 0x9D007000, LENGTH = 0x1F000 - 0x7000
+  kseg0_boot_mem              : ORIGIN = 0x9D008490, LENGTH = 0x0
+  debug_exec_mem              : ORIGIN = 0x9D008490, LENGTH = 0x760
+  kseg0_program_mem     (rx)  : ORIGIN = 0x9D008BF0, LENGTH = 0x1F000 - 0x8BF0
   exception_mem               : ORIGIN = 0x9D01F000, LENGTH = 0x1000
   
   startup_without_bootloader  : ORIGIN = 0xBFC00000, LENGTH = 0x8
-  kseg1_boot_mem              : ORIGIN = 0x9D006000, LENGTH = 0x490
+  kseg1_boot_mem              : ORIGIN = 0x9D008000, LENGTH = 0x490
   config3                     : ORIGIN = 0xBFC00BF0, LENGTH = 0x4
   config2                     : ORIGIN = 0xBFC00BF4, LENGTH = 0x4
   config1                     : ORIGIN = 0xBFC00BF8, LENGTH = 0x4
