@@ -1,8 +1,11 @@
 
 #include <stdint.h>
 
+#include "main.h"
+
 #include "FT_Platform.h"
 #include "app_gui.h"
+#include "app_psensor.h"
 
 /**@name        Display coefficients
  */
@@ -138,12 +141,23 @@ void appGui(void) {
             Ft_Gpu_Hal_WrCmd32(&Gpu,CLEAR(1,1,1));
             Ft_Gpu_Hal_WrCmd32(&Gpu,COLOR_RGB(255,0,255));
             Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 27, OPT_CENTER, "Vacuum tester");
+            Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2, 180, 27, OPT_CENTER, g_sensor);
             Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
             Ft_Gpu_CoCmd_Swap(&Gpu);
             Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
             state = APP_GUI_MAIN;
 
             break;
+        }
+        case APP_GUI_MAIN: {
+            Ft_Gpu_CoCmd_Dlstart(&Gpu);
+            Ft_Gpu_Hal_WrCmd32(&Gpu,CLEAR(1,1,1));
+            Ft_Gpu_Hal_WrCmd32(&Gpu,COLOR_RGB(255,0,255));
+            Ft_Gpu_CoCmd_Progress(&Gpu, 10, DISP_HEIGHT / 2, DISP_WIDTH - 20, 10, OPT_FLAT, g_sensor, 1024);
+            Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2, 180, 27, OPT_CENTER, g_sensor);
+            Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
+            Ft_Gpu_CoCmd_Swap(&Gpu);
+            Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
         }
         default : {
 

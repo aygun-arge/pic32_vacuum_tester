@@ -8,12 +8,15 @@
 #ifndef APP_PSENSOR_H
 #define	APP_PSENSOR_H
 
+#include <stdbool.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 void initPSensorModule(void);
-
+bool isDutDetected(void);
+bool isDutVacuumValid(void);
 
 #ifdef	__cplusplus
 }
