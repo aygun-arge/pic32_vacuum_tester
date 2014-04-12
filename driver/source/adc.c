@@ -11,6 +11,8 @@
 
 #define CONFIG_ADC_FREQUENCY            1000
 
+#define CONFIG_NUM_OF_CHANNELS          16
+
 #if (CONFIG_ADC_FREQUENCY < 250)
 #define TMR3_PRESCALER                  3
 #elif (CONFIG_ADC_FREQUENCY < 500)
@@ -26,7 +28,9 @@
 #define AD_CON1_ASAM                    (0x1u << 2)
 #define AD_CON1_CLRASAM                 (0x1u << 4)
 #define AD_CON1_SSRC_TIMER3             (0x2u << 5)
+#define AD_CON1_FORM_U16_INTEGER        (0x0u << 8)
 #define AD_CON1_FORM_S16_FRACTIONAL     (0x3u << 8)
+#define AD_CON1_FORM_U32_FRACTIONAL     (0x6u << 8)
 #define AD_CON1_FORM_S32_FRACTIONAL     (0x7u << 8)
 #define AD_CON1_SIDL                    (0x1u << 13)
 #define AD_CON1_ON                      (0x1u << 15)
@@ -63,7 +67,7 @@ struct adcChannel {
 
 static uint32_t adcEnabledChannels;
 static uint32_t adcNumOfEnabledChannels;
-static struct adcChannel Channel[16];
+static struct adcChannel Channel[CONFIG_NUM_OF_CHANNELS];
 
 static void enableTmr(void) {
     T3CON   = T_CON_TCKPS(TMR3_PRESCALER);
@@ -77,7 +81,7 @@ static void disableTmr(void) {
 }
 
 static void enableAdc(uint32_t numOfEnabledChannels) {
-    AD1CON1 = AD_CON1_FORM_S32_FRACTIONAL | AD_CON1_SSRC_TIMER3 | AD_CON1_ASAM;
+    AD1CON1 = AD_CON1_FORM_U16_INTEGER    | AD_CON1_SSRC_TIMER3 | AD_CON1_ASAM;
     AD1CON2 = AD_CON2_VCFG_AVDD_AVSS      | AD_CON2_CSCNA       | AD_CON2_SMPI(numOfEnabledChannels);
     AD1CON3 = AD_CON3_ADCS(0xffu);
     AD1CHS  = 0u;
@@ -148,21 +152,25 @@ int32_t adcReadChannel(uint32_t id) {
 
 void __ISR(_ADC_VECTOR) adcHandler(void) {
     int32_t             value;
+    uint32_t            cnt;
     uint32_t            id;
-    uint32_t            idPos;
 
-    idPos = 0u;
+    id = 0u;
 
-    for (id = 0; id < 16; id++) {
-        value = (int32_t)(&ADC1BUF0)[id];
+    for (cnt = 0; cnt < 16; cnt++) {
+        value = (int32_t)(&ADC1BUF0)[cnt];
 
-        if ((adcEnabledChannels & (0x1u << id)) != 0u) {
+        while ((adcEnabledChannels & (0x1u << id)) == 0u) {
+            id++;
+        }
+
+        if (id < CONFIG_NUM_OF_CHANNELS) {
             Channel[id].output = value;
 
             if (Channel[id].callback != NULL) {
                 Channel[id].callback(value);
             }
-            idPos++;
+            id++;
         }
     }
     IFS0CLR = IFS0_AD1IF;
