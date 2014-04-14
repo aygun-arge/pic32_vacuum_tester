@@ -21,26 +21,13 @@
 #include "app_config.h"
 #include "app_control.h"
 
-#define CONFIG_INIT_RETRY               5
-
-int32_t g_sensor;
-
 int main(void) {
-    uint32_t            retry;
-    int32_t             status;
-
     initClockDriver();
     initIntrDriver();
     initGpioDriver();
     initSpiDriver();
     initAdcDriver();
-
-    for (retry = 0; (retry < CONFIG_INIT_RETRY) && ((status = initFlash()) != 0u); retry++);
-
-    if (status != 0) {
-        /*--  NOTE: Failed to wake up the flash  -----------------------------*/
-    }
-    
+    initFlashDriver();
     initBatteryModule();
     initBuzzerModule();
     initGuiModule();
@@ -53,7 +40,6 @@ int main(void) {
     buzzerTone(20);
 
     while (true) {
-        isDutVacuumValid();
         appUsb();
         appGui();
         appControl();

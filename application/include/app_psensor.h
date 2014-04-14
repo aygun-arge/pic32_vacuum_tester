@@ -8,6 +8,7 @@
 #ifndef APP_PSENSOR_H
 #define	APP_PSENSOR_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifdef	__cplusplus
@@ -15,8 +16,9 @@ extern "C" {
 #endif
 
 void initPSensorModule(void);
+void setDutFirstTreshold(uint32_t treshold);
 bool isDutDetected(void);
-bool isDutVacuumValid(void);
+bool isDutFirstTresholdValid(void);
 
 #ifdef	__cplusplus
 }

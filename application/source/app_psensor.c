@@ -13,6 +13,8 @@
 #define CONFIG_PDETECT_GPIO_PIN         9
 #define CONFIG_PSENSOR_ADC_CHANNEL      2
 
+static uint32_t firstTreshold;
+
 void initPSensorModule(void) {
     *(CONFIG_PSENSOR_GPIO_PORT)->tris     |= (0x1u << CONFIG_PSENSOR_GPIO_PIN);
     *(CONFIG_PSENSOR_GPIO_PORT)->ansel    |= (0x1u << CONFIG_PSENSOR_GPIO_PIN);
@@ -20,6 +22,10 @@ void initPSensorModule(void) {
     *(CONFIG_PDETECT_GPIO_PORT)->pulldown |= (0x1u << CONFIG_PDETECT_GPIO_PIN);
 
     adcEnableChannel(CONFIG_PSENSOR_ADC_CHANNEL, NULL);
+}
+
+void setDutFirstTreshold(uint32_t treshold) {
+    firstTreshold = treshold;
 }
 
 bool isDutDetected(void) {
@@ -33,11 +39,11 @@ bool isDutDetected(void) {
     }
 }
 
-bool isDutVacuumValid(void) {
+bool isDutFirstTresholdValid(void) {
 
-    //int32_t             sensor;
+    int32_t             sensor;
 
-    g_sensor = adcReadChannel(CONFIG_PSENSOR_ADC_CHANNEL);
+    sensor = adcReadChannel(CONFIG_PSENSOR_ADC_CHANNEL);
 
     return (false);
 }

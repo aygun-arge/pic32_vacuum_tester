@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-extern int32_t g_sensor;
-
 #ifdef	__cplusplus
 }
 #endif

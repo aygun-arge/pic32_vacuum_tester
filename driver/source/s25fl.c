@@ -18,9 +18,7 @@ static void flashExchange(void * buffer, size_t size) {
     spiSSDeactivate(&FlashSpi);
 }
 
-int32_t initFlash(void) {
-    char                data[6];
-
+void initFlashDriver(void) {
     struct spiConfig spiConfig = {
         CONFIG_S25_SPI_MODULE,
         SPI_MASTER_MODE             | SPI_MASTER_SS_ACTIVE_LOW   |
@@ -37,18 +35,6 @@ int32_t initFlash(void) {
         }
     };
     spiOpen(&FlashSpi, &spiConfig);
-
-    data[0] = CMD_RDID;
-    flashExchange(&data, sizeof(data));
-
-    if (data[1] != 0x1u) {
-        spiClose(&FlashSpi);
-
-        return (-1);
-    } else {
-
-        return (0);
-    }
 }
 
 

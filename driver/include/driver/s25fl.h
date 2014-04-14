@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-int32_t initFlash(void);
+void initFlashDriver(void);
 
 
 #ifdef	__cplusplus
