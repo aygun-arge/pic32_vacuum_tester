@@ -149,12 +149,7 @@ void appGui(void) {
             break;
         }
         case APP_GUI_MAIN: {
-            Ft_Gpu_CoCmd_Dlstart(&Gpu);
-            Ft_Gpu_Hal_WrCmd32(&Gpu,CLEAR(1,1,1));
-            Ft_Gpu_Hal_WrCmd32(&Gpu,COLOR_RGB(255,0,255));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-            Ft_Gpu_CoCmd_Swap(&Gpu);
-            Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+            break;
         }
         default : {
 
