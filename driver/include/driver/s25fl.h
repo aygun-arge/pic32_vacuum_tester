@@ -8,12 +8,15 @@
 #ifndef S25FL_H
 #define	S25FL_H
 
+#include <stdbool.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 void initFlashDriver(void);
-
+void termFlashDriver(void);
+bool isFlashActive(void);
 
 #ifdef	__cplusplus
 }

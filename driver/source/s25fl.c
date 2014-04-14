@@ -37,5 +37,22 @@ void initFlashDriver(void) {
     spiOpen(&FlashSpi, &spiConfig);
 }
 
+void termFlashDriver(void) {
+    spiClose(&FlashSpi);
+}
 
+bool isFlashActive(void) {
+    char                data[6];
+
+    data[0] = CMD_RDID;
+    flashExchange(&data, sizeof(data));
+
+    if (data[1] != 0x1u) {
+
+        return (false);
+    } else {
+
+        return (true);
+    }
+}
 
