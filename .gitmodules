@@ -1,3 +1,6 @@
 [submodule "esolid-base"]
 	path = esolid-base
 	url = https://github.com/nradulovic/esolid-base.git
+[submodule "esolid-vtimer"]
+	path = esolid-vtimer
+	url = https://github.com/nradulovic/esolid-vtimer.git
