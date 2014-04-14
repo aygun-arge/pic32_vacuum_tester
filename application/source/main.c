@@ -12,6 +12,8 @@
 #include "driver/adc.h"
 #include "driver/s25fl.h"
 
+#include "base/base.h"
+
 #include "app_gui.h"
 #include "app_usb.h"
 #include "app_psensor.h"
@@ -28,6 +30,10 @@ int main(void) {
     initSpiDriver();
     initAdcDriver();
     initFlashDriver();
+
+    esBaseInit();
+    esModuleVTimerInit();
+
     initBatteryModule();
     initBuzzerModule();
     initGuiModule();
