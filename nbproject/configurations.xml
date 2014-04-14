@@ -59,6 +59,70 @@
         <itemPath>driver/source/i2c.c</itemPath>
       </logicalFolder>
     </logicalFolder>
+    <logicalFolder name="esolid-base" displayName="esolid-base" projectFiles="true">
+      <logicalFolder name="inc" displayName="inc" projectFiles="true">
+        <logicalFolder name="base" displayName="base" projectFiles="true">
+          <itemPath>esolid-base/inc/base/base.h</itemPath>
+          <itemPath>esolid-base/inc/base/queue.h</itemPath>
+          <itemPath>esolid-base/inc/base/error.h</itemPath>
+          <itemPath>esolid-base/inc/base/prio_queue.h</itemPath>
+          <itemPath>esolid-base/inc/base/debug.h</itemPath>
+          <itemPath>esolid-base/inc/base/bitop.h</itemPath>
+          <itemPath>esolid-base/inc/base/debug_config.h</itemPath>
+          <itemPath>esolid-base/inc/base/prio_queue_config.h</itemPath>
+          <itemPath>esolid-base/inc/base/list.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="port" displayName="port" projectFiles="true">
+        <logicalFolder name="pic32-none-gcc"
+                       displayName="pic32-none-gcc"
+                       projectFiles="true">
+          <logicalFolder name="common" displayName="common" projectFiles="true">
+            <logicalFolder name="plat" displayName="plat" projectFiles="true">
+              <itemPath>esolid-base/port/pic32-none-gcc/common/plat/critical.h</itemPath>
+              <itemPath>esolid-base/port/pic32-none-gcc/common/plat/compiler.h</itemPath>
+            </logicalFolder>
+          </logicalFolder>
+          <logicalFolder name="mips-m4k" displayName="mips-m4k" projectFiles="true">
+            <logicalFolder name="arch" displayName="arch" projectFiles="true">
+              <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/arch/intr_config.h</itemPath>
+              <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/arch/systimer_config.h</itemPath>
+              <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/arch/intr.h</itemPath>
+              <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/arch/cpu.h</itemPath>
+              <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/arch/systimer.h</itemPath>
+            </logicalFolder>
+            <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/cpu.c</itemPath>
+            <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/intr.c</itemPath>
+            <itemPath>esolid-base/port/pic32-none-gcc/mips-m4k/systimer.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="pic32mx250f128d"
+                         displayName="pic32mx250f128d"
+                         projectFiles="true">
+            <logicalFolder name="family" displayName="family" projectFiles="true">
+              <itemPath>esolid-base/port/pic32-none-gcc/pic32mx250f128d/family/profile.h</itemPath>
+            </logicalFolder>
+          </logicalFolder>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="src" displayName="src" projectFiles="true">
+        <itemPath>esolid-base/src/debug.c</itemPath>
+        <itemPath>esolid-base/src/base.c</itemPath>
+        <itemPath>esolid-base/src/error.c</itemPath>
+        <itemPath>esolid-base/src/prio_queue.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
+    <logicalFolder name="esolid-vtimer"
+                   displayName="esolid-vtimer"
+                   projectFiles="true">
+      <logicalFolder name="inc" displayName="inc" projectFiles="true">
+        <logicalFolder name="vtimer" displayName="vtimer" projectFiles="true">
+          <itemPath>esolid-vtimer/inc/vtimer/vtimer.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="src" displayName="src" projectFiles="true">
+        <itemPath>esolid-vtimer/src/vtimer.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
     <logicalFolder name="ft800" displayName="ft800" projectFiles="true">
       <logicalFolder name="include" displayName="include" projectFiles="true">
         <itemPath>ft800/include/FT_Gpu.h</itemPath>
@@ -132,6 +196,8 @@
     <Elem>application</Elem>
     <Elem>ft800</Elem>
     <Elem>driver</Elem>
+    <Elem>esolid-base</Elem>
+    <Elem>esolid-vtimer</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -173,7 +239,7 @@
         <property key="enable-unroll-loops" value="false"/>
         <property key="exclude-floating-point" value="false"/>
         <property key="extra-include-directories"
-                  value="application/include;application/include/config;mla/include;ft800/include;driver/include"/>
+                  value="application/include;application/include/config;mla/include;ft800/include;driver/include;esolid-base/inc;esolid-base/port/pic32-none-gcc/common;esolid-base/port/pic32-none-gcc/mips-m4k;esolid-base/port/pic32-none-gcc/pic32mx250f128d;esolid-vtimer/inc"/>
         <property key="generate-16-bit-code" value="false"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="true"/>
@@ -290,7 +356,6 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
