@@ -13,6 +13,7 @@
 #include "driver/s25fl.h"
 
 #include "base/base.h"
+#include "vtimer/vtimer.h"
 
 #include "app_gui.h"
 #include "app_usb.h"
