@@ -8,6 +8,7 @@
 #ifndef RTC_H
 #define	RTC_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifdef	__cplusplus

@@ -1,4 +1,6 @@
 
+/*=========================================================  INCLUDE FILES  ==*/
+
 #include <xc.h>
 
 #include "main.h"
@@ -11,9 +13,8 @@
 #include "driver/spi.h"
 #include "driver/adc.h"
 #include "driver/s25fl.h"
-
-#include "base/base.h"
-#include "vtimer/vtimer.h"
+#include "driver/rtc.h"
+#include "driver/systick.h"
 
 #include "app_gui.h"
 #include "app_usb.h"
@@ -24,20 +25,58 @@
 #include "app_config.h"
 #include "app_control.h"
 
+#include "base/base.h"
+#include "vtimer/vtimer.h"
+#include "mem/mem_class.h"
+#include "eds/epa.h"
+
+#include "epa_gui.h"
+
+/*=========================================================  LOCAL MACRO's  ==*/
+/*======================================================  LOCAL DATA TYPES  ==*/
+/*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
+
+static void nativeFsm(void);
+
+/*=======================================================  LOCAL VARIABLES  ==*/
+
+static const ES_MODULE_INFO_CREATE("main", "main loop", "Nenad Radulovic");
+
+static uint8_t          StaticMemBuff[16384];
+
+/*======================================================  GLOBAL VARIABLES  ==*/
+
+esMem                   StaticMem = ES_MEM_INITIALIZER();
+esMem                   HeapMem   = ES_MEM_INITIALIZER();
+
+/*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
+
+static void nativeFsm(void) {
+    appUsb();
+    //appGui();
+    //appControl();
+}
+
+/*===================================  GLOBAL PRIVATE FUNCTION DEFINITIONS  ==*/
+/*====================================  GLOBAL PUBLIC FUNCTION DEFINITIONS  ==*/
+
 int main(void) {
+    void *              heapBuff;
+    
+    /*--  Initialize drivers  ------------------------------------------------*/
     initClockDriver();
     initIntrDriver();
     initGpioDriver();
     initSpiDriver();
     initAdcDriver();
     initFlashDriver();
+    initRtcDriver();
+    initSysTickDriver();
 
-    esBaseInit();
-    esModuleVTimerInit();
-
+    /*--  Initialize modules  ------------------------------------------------*/
     initBatteryModule();
     initBuzzerModule();
-    initGuiModule();
+    //initGuiModule();
     initUsbModule();
     initPSensorModule();
     initMotorModule();
@@ -46,12 +85,47 @@ int main(void) {
     /*--  Start up tone  -----------------------------------------------------*/
     buzzerTone(20);
 
-    while (true) {
-        appUsb();
-        appGui();
-        appControl();
-    }
+    /*--  Set-up memories  ---------------------------------------------------*/
+    esMemInit(
+        &esGlobalStaticMemClass,
+        &StaticMem,
+        StaticMemBuff,
+        sizeof(StaticMemBuff),
+        0);                                                                     /* Set-up static memory                                     */
+    esMemAlloc(&StaticMem, 8192, &heapBuff);                                    /* Allocate memory for heap manager                         */
+    esMemInit(
+        &esGlobalHeapMemClass,
+        &HeapMem,
+        heapBuff,
+        4096,
+        0);                                                                     /* Set-up heap memory                                       */
+
+    /*--  Initialize virtual timers  -----------------------------------------*/
+    esModuleVTimerInit();
+
+    /*--  Register a memory to use for events  -------------------------------*/
+    esEventRegisterMem(&HeapMem);
+
+    /*--  Initialize EDS kernel  ---------------------------------------------*/
+    esEdsInit();
+
+    /*--  Create EPAs  -------------------------------------------------------*/
+    esEpaCreate(&GuiEpa, &GuiSm, &StaticMem, &Gui);
+    
+    /*--  Set application idle routine  --------------------------------------*/
+    esEdsSetIdle(nativeFsm);
+
+    /*--  Start multitasking  ------------------------------------------------*/
+    esEdsStart();
+
+    /*--  In case we abort or terminate clean up everything  -----------------*/
+    esEdsTerm();
+    esMemTerm(&HeapMem);
 
     return (0);
 }
 
+/*================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/
+/** @endcond *//** @} *//******************************************************
+ * END of main.c
+ ******************************************************************************/

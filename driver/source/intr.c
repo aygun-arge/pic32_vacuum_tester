@@ -12,6 +12,7 @@
 #include <xc.h>
 
 #include "driver/intr.h"
+#include "arch/intr.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 /*======================================================  LOCAL DATA TYPES  ==*/
@@ -25,8 +26,7 @@
 void initIntrDriver(
     void) {
 
-    INTConfigureSystem(INT_SYSTEM_CONFIG_MULT_VECTOR);
-    INTEnableInterrupts();
+    ES_MODULE_INTR_INIT();
 }
 
 /*================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/

@@ -143,10 +143,8 @@ BOOL appUsbEventHandler(BYTE address, USB_EVENT event, void *data, DWORD size)
 
 void appUsb(void) {
 
-    static enum appUsbState state = APP_USB_INIT;
-
     USBTasks();
-    
+#if 0
     switch (state) {
         case APP_USB_INIT: {
             IsUsbDeviceAttached = false;
@@ -192,5 +190,30 @@ void appUsb(void) {
         default : {
 
         }
+    }
+#endif
+}
+
+bool isUsbDetected(void) {
+
+    if (USBHostMSDSCSIMediaDetect() == TRUE) {
+
+        return (true);
+    } else {
+
+        return (false);
+    }
+}
+
+uint32_t snprintUsbStatus(char * buffer) {
+
+    if (isUsbDetected()) {
+        memcpy(buffer, CONFIG_TEXT_USB_DETECTED, sizeof(CONFIG_TEXT_USB_DETECTED));
+
+        return (sizeof(CONFIG_TEXT_USB_DETECTED));
+    } else {
+        memcpy(buffer, CONFIG_TEXT_USB_NOT_DETECTED, sizeof(CONFIG_TEXT_USB_NOT_DETECTED));
+
+        return (sizeof(CONFIG_TEXT_USB_NOT_DETECTED));
     }
 }

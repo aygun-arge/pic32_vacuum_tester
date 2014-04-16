@@ -13,7 +13,6 @@ extern "C" {
 #endif
 
 void initGuiModule(void);
-void appGui(void);
 
 
 #ifdef	__cplusplus

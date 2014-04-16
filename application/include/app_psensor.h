@@ -17,6 +17,7 @@ extern "C" {
 
 void initPSensorModule(void);
 void setDutFirstTreshold(uint32_t treshold);
+uint32_t getDutRawValue(void);
 bool isDutDetected(void);
 bool isDutFirstTresholdValid(void);
 

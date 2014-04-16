@@ -19,6 +19,9 @@
         <itemPath>application/include/app_buzzer.h</itemPath>
         <itemPath>application/include/app_control.h</itemPath>
         <itemPath>application/include/main.h</itemPath>
+        <itemPath>application/include/events.h</itemPath>
+        <itemPath>application/include/epa_gui.h</itemPath>
+        <itemPath>application/include/app_time.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -30,6 +33,9 @@
         <itemPath>application/source/app_battery.c</itemPath>
         <itemPath>application/source/app_buzzer.c</itemPath>
         <itemPath>application/source/app_control.c</itemPath>
+        <itemPath>application/source/support.c</itemPath>
+        <itemPath>application/source/epa_gui.c</itemPath>
+        <itemPath>application/source/app_time.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -44,6 +50,8 @@
           <itemPath>driver/include/driver/intr.h</itemPath>
           <itemPath>driver/include/driver/adc.h</itemPath>
           <itemPath>driver/include/driver/s25fl.h</itemPath>
+          <itemPath>driver/include/driver/rtc.h</itemPath>
+          <itemPath>driver/include/driver/systick.h</itemPath>
         </logicalFolder>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
@@ -57,6 +65,8 @@
         <itemPath>driver/source/adc.c</itemPath>
         <itemPath>driver/source/s25fl.c</itemPath>
         <itemPath>driver/source/i2c.c</itemPath>
+        <itemPath>driver/source/rtc.c</itemPath>
+        <itemPath>driver/source/systick.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="esolid-base" displayName="esolid-base" projectFiles="true">
@@ -106,9 +116,42 @@
       </logicalFolder>
       <logicalFolder name="src" displayName="src" projectFiles="true">
         <itemPath>esolid-base/src/debug.c</itemPath>
-        <itemPath>esolid-base/src/base.c</itemPath>
         <itemPath>esolid-base/src/error.c</itemPath>
         <itemPath>esolid-base/src/prio_queue.c</itemPath>
+        <itemPath>esolid-base/src/base.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
+    <logicalFolder name="esolid-eds" displayName="esolid-eds" projectFiles="true">
+      <logicalFolder name="inc" displayName="inc" projectFiles="true">
+        <logicalFolder name="eds" displayName="eds" projectFiles="true">
+          <itemPath>esolid-eds/inc/eds/smp.h</itemPath>
+          <itemPath>esolid-eds/inc/eds/epa_config.h</itemPath>
+          <itemPath>esolid-eds/inc/eds/epa.h</itemPath>
+          <itemPath>esolid-eds/inc/eds/event_config.h</itemPath>
+          <itemPath>esolid-eds/inc/eds/event.h</itemPath>
+          <itemPath>esolid-eds/inc/eds/smp_config.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="src" displayName="src" projectFiles="true">
+        <itemPath>esolid-eds/src/smp.c</itemPath>
+        <itemPath>esolid-eds/src/event.c</itemPath>
+        <itemPath>esolid-eds/src/epa.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
+    <logicalFolder name="esolid-mem" displayName="esolid-mem" projectFiles="true">
+      <logicalFolder name="inc" displayName="inc" projectFiles="true">
+        <logicalFolder name="mem" displayName="mem" projectFiles="true">
+          <itemPath>esolid-mem/inc/mem/pool.h</itemPath>
+          <itemPath>esolid-mem/inc/mem/mem_class.h</itemPath>
+          <itemPath>esolid-mem/inc/mem/heap.h</itemPath>
+          <itemPath>esolid-mem/inc/mem/static.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="src" displayName="src" projectFiles="true">
+        <itemPath>esolid-mem/src/mem_class.c</itemPath>
+        <itemPath>esolid-mem/src/heap.c</itemPath>
+        <itemPath>esolid-mem/src/static.c</itemPath>
+        <itemPath>esolid-mem/src/pool.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="esolid-vtimer"
@@ -198,6 +241,8 @@
     <Elem>driver</Elem>
     <Elem>esolid-base</Elem>
     <Elem>esolid-vtimer</Elem>
+    <Elem>esolid-mem</Elem>
+    <Elem>esolid-eds</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -239,8 +284,8 @@
         <property key="enable-unroll-loops" value="false"/>
         <property key="exclude-floating-point" value="false"/>
         <property key="extra-include-directories"
-                  value="application/include;application/include/config;mla/include;ft800/include;driver/include;esolid-base/inc;esolid-base/port/pic32-none-gcc/common;esolid-base/port/pic32-none-gcc/mips-m4k;esolid-base/port/pic32-none-gcc/pic32mx250f128d;esolid-vtimer/inc"/>
-        <property key="generate-16-bit-code" value="false"/>
+                  value="application/include;application/include/config;mla/include;ft800/include;driver/include;esolid-base/inc;esolid-base/port/pic32-none-gcc/common;esolid-base/port/pic32-none-gcc/mips-m4k;esolid-base/port/pic32-none-gcc/pic32mx250f128d;esolid-vtimer/inc;esolid-mem/inc;esolid-eds/inc"/>
+        <property key="generate-16-bit-code" value="true"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="true"/>
         <property key="make-warnings-into-errors" value="false"/>
@@ -356,6 +401,7 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

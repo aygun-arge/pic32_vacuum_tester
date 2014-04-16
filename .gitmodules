@@ -7,3 +7,6 @@
 [submodule "esolid-mem"]
 	path = esolid-mem
 	url = https://github.com/nradulovic/esolid-mem.git
+[submodule "esolid-eds"]
+	path = esolid-eds
+	url = https://github.com/nradulovic/esolid-eds.git

@@ -8,6 +8,9 @@
 #ifndef APP_CONFIG_H
 #define	APP_CONFIG_H
 
+#define CONFIG_HARDWARE_VERSION         "Rev. 02"
+#define CONFIG_SOFTWARE_VERSION         "1.0 Beta"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

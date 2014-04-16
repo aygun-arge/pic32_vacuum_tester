@@ -39,6 +39,11 @@ bool isDutDetected(void) {
     }
 }
 
+uint32_t getDutRawValue(void) {
+
+    return (adcReadChannel(CONFIG_PSENSOR_ADC_CHANNEL));
+}
+
 bool isDutFirstTresholdValid(void) {
 
     int32_t             sensor;

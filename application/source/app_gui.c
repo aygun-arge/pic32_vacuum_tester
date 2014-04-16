@@ -119,41 +119,5 @@ void initGuiModule(void) {
     gpuInitEarly();
 }
 
-void appGui(void) {
 
-    static enum appGuiState state = APP_GUI_INIT;
 
-    switch (state) {
-        case APP_GUI_INIT: {
-            ft_uint8_t chipid;
-
-            chipid = Ft_Gpu_Hal_Rd8(&Gpu, REG_ID);
-
-            if (chipid == 0x7C) {
-                gpuInitLate();
-                state = APP_GUI_START_UP;
-            }
-
-            break;
-        }
-        case APP_GUI_START_UP : {
-            Ft_Gpu_CoCmd_Dlstart(&Gpu);
-            Ft_Gpu_Hal_WrCmd32(&Gpu,CLEAR(1,1,1));
-            Ft_Gpu_Hal_WrCmd32(&Gpu,COLOR_RGB(255,0,255));
-            Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 27, OPT_CENTER, "Vacuum tester");
-            Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-            Ft_Gpu_CoCmd_Swap(&Gpu);
-            Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-            state = APP_GUI_MAIN;
-
-            break;
-        }
-        case APP_GUI_MAIN: {
-            break;
-        }
-        default : {
-
-            break;
-        }
-    }
-}
