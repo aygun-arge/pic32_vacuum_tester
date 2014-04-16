@@ -17,7 +17,6 @@
         <itemPath>application/include/app_motor.h</itemPath>
         <itemPath>application/include/app_battery.h</itemPath>
         <itemPath>application/include/app_buzzer.h</itemPath>
-        <itemPath>application/include/app_control.h</itemPath>
         <itemPath>application/include/main.h</itemPath>
         <itemPath>application/include/events.h</itemPath>
         <itemPath>application/include/epa_gui.h</itemPath>
@@ -32,7 +31,6 @@
         <itemPath>application/source/app_motor.c</itemPath>
         <itemPath>application/source/app_battery.c</itemPath>
         <itemPath>application/source/app_buzzer.c</itemPath>
-        <itemPath>application/source/app_control.c</itemPath>
         <itemPath>application/source/support.c</itemPath>
         <itemPath>application/source/epa_gui.c</itemPath>
         <itemPath>application/source/app_time.c</itemPath>
@@ -255,7 +253,7 @@
         <platformTool>ICD3PlatformTool</platformTool>
         <languageToolchain>XC32</languageToolchain>
         <languageToolchainVersion>1.31</languageToolchainVersion>
-        <platform>2</platform>
+        <platform>3</platform>
       </toolsSet>
       <compileType>
         <linkerTool>
