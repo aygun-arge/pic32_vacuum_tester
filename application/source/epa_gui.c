@@ -13,7 +13,6 @@
 #include "app_time.h"
 #include "app_motor.h"
 #include "app_psensor.h"
-
 #include "app_battery.h"
 #include "app_usb.h"
 
@@ -262,8 +261,13 @@ static void screenMain(struct screenMainStatus * status) {
     Ft_Gpu_CoCmd_Text(&Gpu, 160, 42, DEF_N1_FONT_SIZE, OPT_CENTER, status->time);
     Ft_Gpu_CoCmd_Text(&Gpu, 10,  225, DEF_N1_FONT_SIZE, OPT_CENTERY, "USB:");
     Ft_Gpu_CoCmd_Text(&Gpu, 50,  225, DEF_N1_FONT_SIZE, OPT_CENTERY, status->usb);
+#if (PATCH_LEVEL_POWER_STATUS_1 == 0)
     Ft_Gpu_CoCmd_Text(&Gpu, 180, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, "BAT:");
     Ft_Gpu_CoCmd_Text(&Gpu, 220, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, status->battery);
+#elif (PATCH_LEVEL_POWER_STATUS_1 == 1)
+    Ft_Gpu_CoCmd_Text(&Gpu, 180, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, "PWR:");
+    Ft_Gpu_CoCmd_Text(&Gpu, 220, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, status->battery);
+#endif
     Ft_Gpu_Hal_WrCmd32(&Gpu, BEGIN(3));
     Ft_Gpu_Hal_WrCmd32(&Gpu, VERTEX2II(10,  210, 0, 64));
     Ft_Gpu_Hal_WrCmd32(&Gpu, VERTEX2II(310, 210, 0, 64));

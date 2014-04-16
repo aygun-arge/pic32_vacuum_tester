@@ -23,7 +23,6 @@
 #include "app_battery.h"
 #include "app_buzzer.h"
 #include "app_config.h"
-#include "app_control.h"
 
 #include "base/base.h"
 #include "vtimer/vtimer.h"
@@ -53,8 +52,6 @@ esMem                   HeapMem   = ES_MEM_INITIALIZER();
 
 static void nativeFsm(void) {
     appUsb();
-    //appGui();
-    //appControl();
 }
 
 /*===================================  GLOBAL PRIVATE FUNCTION DEFINITIONS  ==*/
@@ -76,11 +73,9 @@ int main(void) {
     /*--  Initialize modules  ------------------------------------------------*/
     initBatteryModule();
     initBuzzerModule();
-    //initGuiModule();
     initUsbModule();
     initPSensorModule();
     initMotorModule();
-    initControlModule();
 
     /*--  Start up tone  -----------------------------------------------------*/
     buzzerTone(20);

@@ -1,4 +1,5 @@
 
+#include "app_config.h"
 #include "app_battery.h"
 #include "driver/gpio.h"
 #include "Compiler.h"
@@ -104,8 +105,9 @@ enum batteryStatus getBatteryStatus(void) {
 }
 
 uint32_t snprintBatteryStatus(char * buffer) {
+#if (PATCH_LEVEL_POWER_STATUS_1 == 0)
     enum batteryStatus status;
-    
+
     status = getBatteryStatus();
     
     switch (status) {
@@ -145,4 +147,16 @@ uint32_t snprintBatteryStatus(char * buffer) {
             return (sizeof(CONFIG_TEXT_FAULT));
         }
     }
+#endif
+#if (PATCH_LEVEL_POWER_STATUS_1 == 1)
+    if (batteryIsPgHigh()) {
+      memcpy(buffer, CONFIG_TEXT_CHARGING, sizeof(CONFIG_TEXT_CHARGING));
+
+      return (sizeof(CONFIG_TEXT_CHARGING));
+    } else {
+      memcpy(buffer, "on DC power", sizeof("on DC power"));
+
+      return (sizeof("on DC power"));
+    }
+#endif
 }

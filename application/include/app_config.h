@@ -11,6 +11,8 @@
 #define CONFIG_HARDWARE_VERSION         "Rev. 02"
 #define CONFIG_SOFTWARE_VERSION         "1.0 Beta"
 
+#define PATCH_LEVEL_POWER_STATUS_1      1
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
