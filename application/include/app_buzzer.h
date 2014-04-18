@@ -16,6 +16,7 @@ extern "C" {
 
 void initBuzzerModule(void);
 void buzzerTone(uint32_t duration);
+void buzzerMelody(const uint8_t * melody);
 
 #ifdef	__cplusplus
 }

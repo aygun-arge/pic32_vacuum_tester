@@ -8,8 +8,8 @@
 #define CONFIG_VALID_TIME_FORMAT        "%02d:%02d"
 #define CONFIG_INVALID_TIME_FORMAT      "--:--"
 
-#define CONFIG_VALID_DATE_FORMAT        "%04d-%02d-%02d"
-#define CONFIG_INVALID_DATE_FORMAT      "====-==-=="
+#define CONFIG_VALID_DATE_FORMAT        "%02d-%02d-%04d"
+#define CONFIG_INVALID_DATE_FORMAT      "==-==-===="
 
 uint32_t snprintRtcTime(char * buffer) {
 
@@ -33,7 +33,7 @@ uint32_t snprintRtcDate(char * buffer) {
         struct rtcTime  time;
 
         rtcGetTime(&time);
-        snprintf(buffer, sizeof(CONFIG_VALID_DATE_FORMAT), CONFIG_VALID_DATE_FORMAT, time.year, time.month, time.day);
+        snprintf(buffer, sizeof(CONFIG_VALID_DATE_FORMAT), CONFIG_VALID_DATE_FORMAT, time.month, time.day, time.year);
 
         return (sizeof(CONFIG_VALID_DATE_FORMAT));
     } else {

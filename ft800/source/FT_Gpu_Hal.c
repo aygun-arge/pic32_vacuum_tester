@@ -69,7 +69,7 @@ ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
         SPI_SLAVE_MODE  |
         SPI_CLOCK_POLARITY_IDLE_LOW | SPI_CLOCK_PHASE_FIRST_EDGE |
         SPI_DATA_8,
-        1000000ul,
+        10000000ul,
         2,
         {
             SPI2_SDI_RPB2,

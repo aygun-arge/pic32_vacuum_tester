@@ -56,3 +56,7 @@ bool isFlashActive(void) {
     }
 }
 
+void flashRead(uint32_t address, char * buffer, size_t size) {
+    
+}
+

@@ -16,10 +16,13 @@ extern "C" {
 #endif
 
 void initPSensorModule(void);
-void setDutFirstTreshold(uint32_t treshold);
 uint32_t getDutRawValue(void);
 bool isDutDetected(void);
-bool isDutFirstTresholdValid(void);
+bool isDutFirstThresholdValid(void);
+bool isDutSecondhTresholdValid(void);
+void newDut(uint32_t firstTreshold, uint32_t secondTreshold);
+void updateDutFirstTh(void);
+void updateDutSecondTh(void);
 
 #ifdef	__cplusplus
 }

@@ -150,13 +150,13 @@ uint32_t snprintBatteryStatus(char * buffer) {
 #endif
 #if (PATCH_LEVEL_POWER_STATUS_1 == 1)
     if (batteryIsPgHigh()) {
-      memcpy(buffer, CONFIG_TEXT_CHARGING, sizeof(CONFIG_TEXT_CHARGING));
+      memcpy(buffer, "full", sizeof("full"));
 
-      return (sizeof(CONFIG_TEXT_CHARGING));
+      return (sizeof("full"));
     } else {
-      memcpy(buffer, "on DC power", sizeof("on DC power"));
+      memcpy(buffer, "DC power", sizeof("DC power"));
 
-      return (sizeof("on DC power"));
+      return (sizeof("DC power"));
     }
 #endif
 }

@@ -8,6 +8,8 @@
 #ifndef APP_CONFIG_H
 #define	APP_CONFIG_H
 
+#include <stdint.h>
+
 #define CONFIG_HARDWARE_VERSION         "Rev. 02"
 #define CONFIG_SOFTWARE_VERSION         "1.0 Beta"
 
@@ -19,6 +21,10 @@ extern "C" {
 
 void configGetGpuCalibrate();
 
+uint32_t getFirstThTimeout(void);
+uint32_t getFirstThRawVacuum(void);
+uint32_t getSecondThTimeout(void);
+uint32_t getSecondThValue(void);
 
 #ifdef	__cplusplus
 }
