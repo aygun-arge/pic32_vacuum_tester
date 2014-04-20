@@ -90,6 +90,52 @@ void spiExchange(
     }
 }
 
+void spiWrite(
+    struct spiHandle *  handle,
+    const void *        buffer,
+    size_t              nElements) {
+
+    size_t              transmitted;
+
+    transmitted = 0u;
+
+    switch (handle->flags & SPI_DATA_Msk) {
+        case SPI_DATA_8: {
+            const uint8_t *  buffer_ = (const uint8_t *)buffer;
+
+            while (transmitted < nElements) {
+                if (handle->id->isBuffFull(handle) != true) {
+                    (void)handle->id->exchange(handle, buffer_[transmitted]);
+                    transmitted++;
+                }
+            }
+            break;
+        }
+        case SPI_DATA_16 : {
+            uint16_t *  buffer_ = (uint16_t *)buffer;
+
+            while (transmitted < nElements) {
+                if (handle->id->isBuffFull(handle) != true) {
+                    (void)handle->id->exchange(handle, buffer_[transmitted]);
+                    transmitted++;
+                }
+            }
+            break;
+        }
+        default : {
+            uint32_t *  buffer_ = (uint32_t *)buffer;
+
+            while (transmitted < nElements) {
+                if (handle->id->isBuffFull(handle) != true) {
+                    (void)handle->id->exchange(handle, buffer_[transmitted]);
+                    transmitted++;
+                }
+            }
+            break;
+        }
+    }
+}
+
 void spiSSActivate(
     struct spiHandle *  handle) {
 

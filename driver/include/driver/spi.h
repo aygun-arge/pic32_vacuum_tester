@@ -97,6 +97,11 @@ void spiExchange(
     void *              buffer,
     size_t              nElements);
 
+void spiWrite(
+    struct spiHandle *  handle,
+    const void *        buffer,
+    size_t              nElements);
+
 void spiSSActivate(
     struct spiHandle *  handle);
 
