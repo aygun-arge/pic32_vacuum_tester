@@ -1,4 +1,6 @@
 
+
+#include "driver/s25fl.h"
 #include "driver/spi.h"
 #include <stddef.h>
 
@@ -33,6 +35,8 @@
 #define CFI_FAMILY_ID_FL_S              0x80u
 #define CFI_MULTI_BYTE_WRITE_256        0x08u
 #define CFI_MULTI_BYTE_WRITE_512        0x09u
+#define CFI_SECTOR_ARCHITECTURE_UNIFORM256      0x00u
+#define CFI_SECTOR_ARCHITECTURE_PARAM64         0x01u
 
 #define CMD_RDID                        0x9fu
 #define CMD_RDSR1                       0x05u
@@ -45,6 +49,7 @@
 #define CMD_BRWR                        0x17u
 #define CMD_4READ                       0x13u
 #define CMD_4PP                         0x12u
+#define CMD_4SE                         0xdcu
 #define CMD_BE                          0x60u
 #define CMD_RESET                       0xf0u
 
@@ -56,20 +61,18 @@
 #define REG_SR1_WIP                     (0x1u << 0)
 
 struct flashPhy {
-    bool                isValid;
-    uint32_t            size;
-    uint32_t            nEraseBlocks;
+    bool                isValid;                                                /* Is this descriptor valid?                                */
+    uint32_t            size;                                                   /* The size of flash memory used in bytes                   */
+    uint32_t            nEraseBlockRegions;                                     /* The number of erase block regions                        */
     struct eraseBlockRegion {
-        uint32_t            nSectors;
-        uint32_t            sectorSize;
-    }                   ebr[2];
-    uint32_t            ppSize;
-    uint32_t            sectorArch;
-    uint32_t            sectorSize;
+        uint32_t            nSectors;                                           /* Number of sectors in each erase block region             */
+        uint32_t            sectorSize;                                         /* Size of sectors in each erase block region               */
+    }                   ebr[2];                                                 /* Erase Block Regions                                      */
+    uint32_t            ppSize;                                                 /* Preferred page programming size                          */
 };
 
 static struct spiHandle FlashSpi;
-static struct flashPhy FlashPhyDescriptor;
+static struct flashPhy FlashPhy;
 
 static void flashExchange(void * buffer, size_t size) {
     spiSSActivate(&FlashSpi);
@@ -116,8 +119,7 @@ static void readPhyDescriptor(struct flashPhy * phy) {
 
         return;
     }
-    phy->sectorArch = cfi[CFI_SECTOR_ARCHITECTURE_Pos];
-    phy->size       = 0x1u << (cfi[CFI_DEVICE_SIZE_Pos] && 0x1fu);
+    phy->size       = 0x1u << (cfi[CFI_DEVICE_SIZE_Pos] & 0x1fu);
 
     if (cfi[CFI_MULTI_BYTE_WRITE_Pos] == CFI_MULTI_BYTE_WRITE_256) {
         phy->ppSize = 256u;
@@ -126,14 +128,14 @@ static void readPhyDescriptor(struct flashPhy * phy) {
     } else {
         phy->ppSize = 0u;
     }
-    phy->nEraseBlocks       = cfi[CFI_NUM_OF_ERASE_BLOCKS_Pos];
+    phy->nEraseBlockRegions       = cfi[CFI_NUM_OF_ERASE_BLOCKS_Pos];
     phy->ebr[0].nSectors    = (cfi[CFI_EBR1_NUM_OF_SECTORS_MSB_Pos] << 8) |
                                cfi[CFI_EBR1_NUM_OF_SECTORS_LSB_Pos];
     phy->ebr[0].sectorSize  = (cfi[CFI_EBR1_SECTOR_SIZE_MSB_Pos] << 8) |
                                cfi[CFI_EBR1_SECTOR_SIZE_LSB_Pos];
     phy->ebr[0].sectorSize *= 256u;
 
-    if (phy->nEraseBlocks == 2) {
+    if (phy->nEraseBlockRegions == 2) {
         phy->ebr[1].nSectors    = (cfi[CFI_EBR2_NUM_OF_SECTORS_MSB_Pos] << 8) |
                                    cfi[CFI_EBR2_NUM_OF_SECTORS_LSB_Pos];
         phy->ebr[1].sectorSize  = (cfi[CFI_EBR2_SECTOR_SIZE_MSB_Pos] << 8) |
@@ -143,6 +145,15 @@ static void readPhyDescriptor(struct flashPhy * phy) {
         phy->ebr[1].nSectors   = 0u;
         phy->ebr[1].sectorSize = 0u;
     }
+}
+
+static void prepareWrite(void) {
+    uint8_t             wrenCommand;
+
+    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
+    wrenCommand = CMD_WREN;
+    flashExchange(&wrenCommand, sizeof(wrenCommand));
+    while ((readStatus() & REG_SR1_WEL) == 0u);
 }
 
 void initFlashDriver(void) {
@@ -162,7 +173,7 @@ void initFlashDriver(void) {
         }
     };
     spiOpen(&FlashSpi, &spiConfig);
-    readPhyDescriptor(&FlashPhyDescriptor);
+    readPhyDescriptor(&FlashPhy);
 }
 
 void termFlashDriver(void) {
@@ -184,7 +195,7 @@ bool isFlashActive(void) {
     }
 }
 
-void flashRead(uint32_t address, char * buffer, size_t size) {
+void flashRead(uint32_t address, uint8_t * buffer, size_t size) {
     uint8_t             command[5];
 
     spiSSActivate(&FlashSpi);
@@ -198,15 +209,12 @@ void flashRead(uint32_t address, char * buffer, size_t size) {
     spiSSDeactivate(&FlashSpi);
 }
 
-void flashWrite(uint32_t address, char * buffer, size_t size) {
-    uint8_t             wrenCommand;
+
+void flashWrite(uint32_t address, uint8_t * buffer, size_t size) {
     uint8_t             command[5];
+    uint32_t            chunk;
 
-    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
-    wrenCommand = CMD_WREN;
-    flashExchange(&wrenCommand, sizeof(wrenCommand));
-
-    while ((readStatus() & REG_SR1_WEL) == 0u);
+    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4PP;
     command[1] = (address >> 24) && 0xffu;
@@ -218,4 +226,44 @@ void flashWrite(uint32_t address, char * buffer, size_t size) {
     spiSSDeactivate(&FlashSpi);
 }
 
+void flashEraseSector(uint32_t address) {
+    uint8_t             command[5];
 
+    prepareWrite();
+    spiSSActivate(&FlashSpi);
+    command[0] = CMD_4SE;
+    command[1] = (address >> 24) && 0xffu;
+    command[2] = (address >> 16) && 0xffu;
+    command[3] = (address >>  8) && 0xffu;
+    command[4] = (address >>  0) && 0xffu;
+    spiWrite(&FlashSpi, command, sizeof(command));
+    spiSSDeactivate(&FlashSpi);
+}
+
+void flashEraseAll(void) {
+    uint32_t            command[1];
+    
+    prepareWrite();
+    spiSSActivate(&FlashSpi);
+    command[0] = CMD_BE;
+    spiWrite(&FlashSpi, command, sizeof(command));
+    spiSSDeactivate(&FlashSpi);
+}
+
+enum flashError flashStateIs(void) {
+
+    uint8_t             status;
+
+    status = readStatus();
+
+    if (status & REG_SR1_P_ERR) {
+
+        return (FLASH_ERROR_PROGRAMMING);
+    } else if (status & REG_SR1_E_ERR) {
+
+        return (FLASH_ERROR_ERASE);
+    } else {
+
+        return (FLASH_ERROR_NONE);
+    }
+}
