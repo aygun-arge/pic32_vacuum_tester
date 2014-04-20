@@ -23,6 +23,7 @@
 #include "app_battery.h"
 #include "app_buzzer.h"
 #include "app_config.h"
+#include "app_storage.h"
 
 #include "base/base.h"
 #include "vtimer/vtimer.h"
@@ -76,6 +77,7 @@ int main(void) {
     initUsbModule();
     initPSensorModule();
     initMotorModule();
+    initStorage();
 
     /*--  Start up tone  -----------------------------------------------------*/
     buzzerTone(20);

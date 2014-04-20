@@ -2,7 +2,8 @@
 
 #include "driver/s25fl.h"
 #include "driver/spi.h"
-#include <stddef.h>
+
+#include "base/bitop.h"
 
 #define CONFIG_S25_SPI_MODULE           &SpiSoft
 #define CONFIG_S25FL_SDI                SPIS_SDI_C4
@@ -68,7 +69,7 @@ struct flashPhy {
         uint32_t            nSectors;                                           /* Number of sectors in each erase block region             */
         uint32_t            sectorSize;                                         /* Size of sectors in each erase block region               */
     }                   ebr[2];                                                 /* Erase Block Regions                                      */
-    uint32_t            ppSize;                                                 /* Preferred page programming size                          */
+    uint32_t            ppSize;                                                 /* Maximum page programming size                            */
 };
 
 static struct spiHandle FlashSpi;
@@ -80,19 +81,35 @@ static void flashExchange(void * buffer, size_t size) {
     spiSSDeactivate(&FlashSpi);
 }
 
-static uint32_t readStatus(void) {
-    char buffer[2];
+static void validatePhy(struct flashPhy * phy) {
+    uint8_t             cfiCommand[1];
+    uint8_t             cfi[CFI_FAMILY_ID_Pos];
+    
+    spiSSActivate(&FlashSpi);
+    cfiCommand[0] = CMD_RDID;
+    spiWrite(&FlashSpi,    cfiCommand, sizeof(cfiCommand));
+    spiExchange(&FlashSpi, cfi,  sizeof(cfi));
+    spiSSDeactivate(&FlashSpi);
 
-    buffer[0] = CMD_RDSR1;
-    flashExchange(buffer, sizeof(buffer));
+    phy->isValid = true;
 
-    return (buffer[1]);
+    if (cfi[CFI_MANUFACTURER_Pos] != CFI_MANUFACTURER_SPANSION) {
+        phy->isValid = false;
+
+        return;
+    }
+
+    if (cfi[CFI_FAMILY_ID_Pos] != CFI_FAMILY_ID_FL_S) {
+        phy->isValid = false;
+
+        return;
+    }
 }
 
-static void readPhyDescriptor(struct flashPhy * phy) {
+static void readPhy(struct flashPhy * phy) {
     uint8_t             cfiCommand[1];
     uint8_t             cfi[0x50];
-    
+
     spiSSActivate(&FlashSpi);
     cfiCommand[0] = CMD_RDID;
     spiWrite(&FlashSpi,    cfiCommand, sizeof(cfiCommand));
@@ -147,13 +164,60 @@ static void readPhyDescriptor(struct flashPhy * phy) {
     }
 }
 
-static void prepareWrite(void) {
+static uint32_t readStatus(void) {
+    char buffer[2];
+
+    spiSSActivate(&FlashSpi);
+    buffer[0] = CMD_RDSR1;
+    flashExchange(buffer, sizeof(buffer));
+    spiSSDeactivate(&FlashSpi);
+
+    return (buffer[1]);
+}
+
+static enum flashError prepareWrite(void) {
     uint8_t             wrenCommand;
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
+
+    spiSSActivate(&FlashSpi);
     wrenCommand = CMD_WREN;
     flashExchange(&wrenCommand, sizeof(wrenCommand));
+    spiSSDeactivate(&FlashSpi);
+    
     while ((readStatus() & REG_SR1_WEL) == 0u);
+
+    return (FLASH_ERROR_NONE);
+}
+
+static void readData(uint32_t address, uint8_t * buffer, size_t size) {
+    uint8_t             command[5];
+
+    spiSSActivate(&FlashSpi);
+    command[0] = CMD_4READ;
+    command[1] = (address >> 24) && 0xffu;
+    command[2] = (address >> 16) && 0xffu;
+    command[3] = (address >>  8) && 0xffu;
+    command[4] = (address >>  0) && 0xffu;
+    spiWrite(&FlashSpi, command, sizeof(command));
+    spiExchange(&FlashSpi, buffer,  size);
+    spiSSDeactivate(&FlashSpi);
+}
+
+
+static void writeData(uint32_t address, const uint8_t * buffer, size_t size) {
+    uint8_t             command[5];
+
+    prepareWrite();
+    spiSSActivate(&FlashSpi);
+    command[0] = CMD_4PP;
+    command[1] = (address >> 24) && 0xffu;
+    command[2] = (address >> 16) && 0xffu;
+    command[3] = (address >>  8) && 0xffu;
+    command[4] = (address >>  0) && 0xffu;
+    spiWrite(&FlashSpi, command, sizeof(command));
+    spiWrite(&FlashSpi, buffer,  size);
+    spiSSDeactivate(&FlashSpi);
 }
 
 void initFlashDriver(void) {
@@ -173,63 +237,21 @@ void initFlashDriver(void) {
         }
     };
     spiOpen(&FlashSpi, &spiConfig);
-    readPhyDescriptor(&FlashPhy);
+    readPhy(&FlashPhy);
 }
 
 void termFlashDriver(void) {
     spiClose(&FlashSpi);
 }
 
-bool isFlashActive(void) {
-    char                data[6];
+enum flashError flashEraseSector(uint32_t address) {
+    uint8_t             command[5];
+    enum flashError     error;
 
-    data[0] = CMD_RDID;
-    flashExchange(&data, sizeof(data));
+    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
 
-    if (data[1] != 0x1u) {
-
-        return (false);
-    } else {
-
-        return (true);
+        return (error);
     }
-}
-
-void flashRead(uint32_t address, uint8_t * buffer, size_t size) {
-    uint8_t             command[5];
-
-    spiSSActivate(&FlashSpi);
-    command[0] = CMD_4READ;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
-    spiWrite(&FlashSpi, command, sizeof(command));
-    spiExchange(&FlashSpi, buffer,  size);
-    spiSSDeactivate(&FlashSpi);
-}
-
-
-void flashWrite(uint32_t address, uint8_t * buffer, size_t size) {
-    uint8_t             command[5];
-    uint32_t            chunk;
-
-    prepareWrite();
-    spiSSActivate(&FlashSpi);
-    command[0] = CMD_4PP;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
-    spiWrite(&FlashSpi, command, sizeof(command));
-    spiWrite(&FlashSpi, buffer,  size);
-    spiSSDeactivate(&FlashSpi);
-}
-
-void flashEraseSector(uint32_t address) {
-    uint8_t             command[5];
-
-    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4SE;
     command[1] = (address >> 24) && 0xffu;
@@ -238,22 +260,34 @@ void flashEraseSector(uint32_t address) {
     command[4] = (address >>  0) && 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
+
+    return (FLASH_ERROR_NONE);
 }
 
-void flashEraseAll(void) {
+enum flashError flashEraseAll(void) {
     uint32_t            command[1];
+    enum flashError     error;
     
-    prepareWrite();
+    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
+
+        return (error);
+    }
     spiSSActivate(&FlashSpi);
     command[0] = CMD_BE;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
+
+    return (FLASH_ERROR_NONE);
 }
 
-enum flashError flashStateIs(void) {
+enum flashError flashErrorStateIs(void) {
 
     uint8_t             status;
 
+    if (FlashPhy.isValid == false) {
+
+        return (FLASH_ERROR_NOT_VALID);
+    }
     status = readStatus();
 
     if (status & REG_SR1_P_ERR) {
@@ -267,3 +301,113 @@ enum flashError flashStateIs(void) {
         return (FLASH_ERROR_NONE);
     }
 }
+
+enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
+    uint32_t            chunk;
+    uint32_t            counter;
+    uint32_t            alignedAddress;
+
+    validatePhy(&FlashPhy);
+
+    if (FlashPhy.isValid == false) {
+
+        return (FLASH_ERROR_NOT_VALID);
+    }
+    alignedAddress = ES_ALIGN_UP(address, FlashPhy.ppSize);
+    chunk          = alignedAddress - address;
+
+    if (chunk != 0u) {
+
+        if (chunk > size) {
+            chunk = size;
+        }
+        writeData(address, data, chunk);
+    }
+    counter = chunk;
+    size   -= chunk;
+
+    while (size > FlashPhy.ppSize) {
+        writeData(alignedAddress, &data[counter], FlashPhy.ppSize);
+        alignedAddress += FlashPhy.ppSize;
+        counter        += FlashPhy.ppSize;
+        size           -= FlashPhy.ppSize;
+    }
+
+    if (size > 0) {
+        flashWrite(alignedAddress, &data[counter], size);
+    }
+
+    return (FLASH_ERROR_NONE);
+}
+
+enum flashError flashRead(uint32_t address, uint8_t * data, size_t size) {
+    validatePhy(&FlashPhy);
+
+    if (FlashPhy.isValid) {
+        readData(address, data, size);
+
+        return (FLASH_ERROR_NONE);
+    } else {
+
+        return (FLASH_ERROR_NOT_VALID);
+    }
+}
+
+size_t flashGetSectorSize(uint32_t address) {
+
+    if (FlashPhy.nEraseBlockRegions == 1) {
+
+        return (FlashPhy.ebr[0].sectorSize);
+    } else {
+
+        if (address < (FlashPhy.ebr[0].sectorSize * FlashPhy.ebr[0].nSectors)) {
+
+            return (FlashPhy.ebr[0].sectorSize);
+        } else {
+
+            return (FlashPhy.ebr[1].sectorSize);
+        }
+    }
+}
+
+uint32_t flashGetNextSector(uint32_t address) {
+
+    if (address > FlashPhy.size) {
+        
+        return (0);
+    }
+    address++;
+
+    if (FlashPhy.nEraseBlockRegions == 1) {
+
+        return (ES_ALIGN_UP(address, FlashPhy.ebr[0].sectorSize));
+    } else {
+
+        if (address < (FlashPhy.ebr[0].sectorSize * FlashPhy.ebr[0].nSectors)) {
+
+            return (ES_ALIGN_UP(address, FlashPhy.ebr[0].sectorSize));
+        } else {
+
+            return (ES_ALIGN_UP(address, FlashPhy.ebr[1].sectorSize));
+        }
+    }
+}
+
+uint32_t flashGetSectorBase(uint32_t address) {
+
+    if (FlashPhy.nEraseBlockRegions == 1) {
+
+        return (ES_ALIGN(address, FlashPhy.ebr[0].sectorSize));
+    } else {
+
+        if (address < (FlashPhy.ebr[0].sectorSize * FlashPhy.ebr[0].nSectors)) {
+
+            return (ES_ALIGN(address, FlashPhy.ebr[0].sectorSize));
+        } else {
+
+            return (ES_ALIGN(address, FlashPhy.ebr[1].sectorSize));
+        }
+    }
+}
+
+

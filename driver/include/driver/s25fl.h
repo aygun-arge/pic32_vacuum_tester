@@ -18,18 +18,22 @@ extern "C" {
 
 enum flashError {
     FLASH_ERROR_NONE,
+    FLASH_ERROR_NOT_VALID,
     FLASH_ERROR_PROGRAMMING,
-    FLASH_ERROR_ERASE
+    FLASH_ERROR_ERASE,
+    FLASH_ERROR_TIMEOUT
 };
 
 void initFlashDriver(void);
 void termFlashDriver(void);
-bool isFlashActive(void);
-void flashRead(uint32_t  address, uint8_t * buffer, size_t size);
-void flashWrite(uint32_t address, uint8_t * buffer, size_t size);
-void flashEraseSector(uint32_t address);
-void flashEraseAll(void);
-enum flashError flashStateIs(void);
+enum flashError flashRead(uint32_t  address,       uint8_t * data, size_t size);
+enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size);
+enum flashError flashEraseSector(uint32_t address);
+enum flashError flashEraseAll(void);
+enum flashError flashErrorStateIs(void);
+size_t flashGetSectorSize(uint32_t address);
+uint32_t flashGetNextSector(uint32_t address);
+uint32_t flashGetSectorBase(uint32_t address);
 
 #ifdef	__cplusplus
 }
