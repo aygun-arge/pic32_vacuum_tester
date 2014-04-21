@@ -21,10 +21,10 @@ extern "C" {
 
 void configGetGpuCalibrate();
 
-uint32_t getFirstThTimeout(void);
-uint32_t getFirstThRawVacuum(void);
-uint32_t getSecondThTimeout(void);
-uint32_t getSecondThValue(void);
+uint32_t configGetFirstThTimeout(void);
+uint32_t configGetFirstThRawVacuum(void);
+uint32_t configGetSecondThTimeout(void);
+uint32_t configGetSecondThValue(void);
 
 #ifdef	__cplusplus
 }

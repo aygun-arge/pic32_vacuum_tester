@@ -85,7 +85,8 @@
     entry(statePreTest,             TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
     entry(stateTestSecondTh,        TOP)                                        \
-    entry(stateTestOverview,        TOP)                                        \
+    entry(stateTestResults,         TOP)                                        \
+    entry(stateTestResultsNotify,   TOP)                                        \
     entry(stateSettings,            TOP)                                        \
     entry(stateExport,              TOP)                                        \
     entry(stateWelcome,             TOP)
@@ -105,7 +106,8 @@ enum localEvents {
     FIRST_TH_REFRESH_,
     SECOND_TH_TIMEOUT_,
     SECOND_TH_REFRESH_,
-    TEST_OVERVIEW_REFRESH_,
+    TEST_RESULTS_NOTIFY_REFRESH_,
+    TEST_RESULTS_NOTIFY_TIMEOUT_,
     REFRESH_
 };
 
@@ -118,21 +120,20 @@ enum testTitle {
     SCREEN_TEST_SUCCESS
 };
 
+enum testResult {
+    TEST_SUCCESS,
+    TEST_FAILURE,
+    TEST_CANCELLED
+};
+
 struct testStatus {
     bool                isValid;
     bool                isCancelled;
     bool                isExecuted;
     uint32_t            rawMaxValue;
+    uint32_t            time;
 };
 
-struct wspace {
-    struct esVTimer     timeout;
-    struct esVTimer     refresh;
-    uint32_t            retry;
-    uint32_t            rawIdleVacuum;
-    struct testStatus   firstTh;
-    struct testStatus   secondTh;
-};
 
 struct screenMain {
     bool                isDutDetected;
@@ -143,6 +144,7 @@ struct screenMain {
 
 struct screenTest {
     enum testTitle      title;
+    bool                isBackgroundEnabled;
     uint32_t            mask;
     int32_t             firstThVal;
     uint32_t            firstThProgress;
@@ -151,6 +153,20 @@ struct screenTest {
     uint32_t            secondThProgress;
     char                secondThStatus[40];
     char                button[16];
+};
+
+struct wspace {
+    struct esVTimer     timeout;
+    struct esVTimer     refresh;
+    uint32_t            retry;
+    uint32_t            rawIdleVacuum;
+    struct testStatus   firstTh;
+    struct testStatus   secondTh;
+    union screen {
+        struct screenMain   main;
+        struct screenTest   test;
+    }                   screen;
+    const uint8_t *     notification;
 };
 
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -172,7 +188,8 @@ static esAction stateMain               (struct wspace *, const esEvent *);
 static esAction statePreTest            (struct wspace *, const esEvent *);
 static esAction stateTestFirstTh        (struct wspace *, const esEvent *);
 static esAction stateTestSecondTh       (struct wspace *, const esEvent *);
-static esAction stateTestOverview       (struct wspace *, const esEvent *);
+static esAction stateTestResults        (struct wspace *, const esEvent *);
+static esAction stateTestResultsNotify  (struct wspace *, const esEvent *);
 static esAction stateSettings           (struct wspace *, const esEvent *);
 static esAction stateExport             (struct wspace *, const esEvent *);
 
@@ -182,10 +199,10 @@ static const ES_MODULE_INFO_CREATE("GUI", CONFIG_EPA_GUI_NAME, "Nenad Radulovic"
 
 static const esSmTable      GuiTable[] = ES_STATE_TABLE_INIT(GUI_TABLE);
 
-static const uint8_t StartMelody[] = {20, 100, 20, 0};
-static const uint8_t FailMelody[] = {150, 150, 175, 175, 200, 0};
-static const uint8_t ConfusedMelody[] = {20, 100, 20, 100, 40, 100, 40, 100, 60, 0};
-static const uint8_t SuccessMelody[] = {20, 100, 20, 100, 20, 0};
+static const uint8_t StartNotification[] = {20, 100, 20, 0};
+static const uint8_t FailNotification[] = {150, 150, 175, 175, 200, 0};
+static const uint8_t ConfusedNotification[] = {20, 100, 20, 100, 40, 100, 40, 100, 60, 0};
+static const uint8_t SuccessNotification[] = {40, 100, 40, 100, 40, 0};
 
 static Ft_Gpu_Hal_Context_t Gpu;
 
@@ -381,38 +398,121 @@ static void screenMain(struct screenMain * status) {
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
 }
+static enum testResult evaluateTest(struct wspace * wspace) {
+     if (wspace->firstTh.isValid && wspace->secondTh.isValid) {
 
-static void screenTest(struct screenTest * status) {
+         return (TEST_SUCCESS);
+    } else if (wspace->firstTh.isCancelled || wspace->secondTh.isCancelled) {
+
+        return (TEST_CANCELLED);
+    } else {
+
+        return (TEST_FAILURE);
+    }
+}
+
+static void screenTestToggleBackground(struct wspace * wspace) {
+    if (wspace->screen.test.isBackgroundEnabled == true) {
+        wspace->screen.test.isBackgroundEnabled = false;
+    } else {
+        wspace->screen.test.isBackgroundEnabled = true;
+    }
+}
+
+static void screenTestPrepare(struct wspace * wspace) {
+
+    switch (evaluateTest(wspace)) {
+        case TEST_SUCCESS : {
+            wspace->screen.test.title = SCREEN_TEST_SUCCESS;
+
+            break;
+        }
+        case TEST_CANCELLED : {
+            wspace->screen.test.title = SCREEN_TEST_CANCELLED;
+
+            break;
+        }
+        default : {
+            wspace->screen.test.title = SCREEN_TEST_FAILED;
+        }
+    }
+
+    if (wspace->firstTh.isValid) {
+        strcpy(wspace->screen.test.firstThStatus, "PASSED");
+    } else if (wspace->firstTh.isCancelled) {
+        strcpy(wspace->screen.test.firstThStatus, "CANCELLED");
+    } else if (wspace->firstTh.isExecuted == false) {
+        strcpy(wspace->screen.test.firstThStatus, "SKIPPED");
+    } else {
+        strcpy(wspace->screen.test.firstThStatus, "FAILED");
+    }
+
+    if (wspace->secondTh.isValid) {
+        strcpy(wspace->screen.test.secondThStatus, "PASSED");
+    } else if (wspace->secondTh.isCancelled) {
+        strcpy(wspace->screen.test.secondThStatus, "CANCELLED");
+    } else if (wspace->secondTh.isExecuted == false) {
+        strcpy(wspace->screen.test.secondThStatus, "SKIPPED");
+    } else {
+        strcpy(wspace->screen.test.secondThStatus, "FAILED");
+    }
+    wspace->screen.test.mask =
+        SCREEN_TEST_EN_FIRST_INFO  | SCREEN_TEST_EN_FIRST_STATUS  |
+        SCREEN_TEST_EN_SECOND_INFO | SCREEN_TEST_EN_SECOND_STATUS |
+        SCREEN_TEST_EN_BUTTON;
+    wspace->screen.test.firstThVal  = wspace->firstTh.rawMaxValue;
+    wspace->screen.test.secondThVal = wspace->secondTh.rawMaxValue;
+    wspace->screen.test.isBackgroundEnabled = true;
+    strcpy(wspace->screen.test.button, "Continue");
+}
+
+static void screenTestDump(struct screenTest * status) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
 
     switch (status->title) {
         case SCREEN_TEST_PREPARING     :
         case SCREEN_TEST_1_IN_PROGRESS :
         case SCREEN_TEST_2_IN_PROGRESS : {
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            if (status->isBackgroundEnabled) {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            } else {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            }
             Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
             Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
             Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test in progress");
             break;
         }
         case SCREEN_TEST_FAILED : {
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 16, 16));
+            if (status->isBackgroundEnabled) {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 16, 16));
+            } else {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            }
             Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
             Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
             Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test failed");
             break;
         }
         case SCREEN_TEST_CANCELLED: {
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 16));
+            if (status->isBackgroundEnabled) {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 16));
+            } else {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            }
             Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
             Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
             Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test cancelled");
             break;
         }
         case SCREEN_TEST_SUCCESS: {
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(16, 224, 16));
+            if (status->isBackgroundEnabled) {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(16, 224, 16));
+            } else {
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+            }
             Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
+            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
             Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test success");
             break;
         }
@@ -643,8 +743,8 @@ static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
             status.title = SCREEN_TEST_PREPARING;
             status.mask  = SCREEN_TEST_EN_FIRST_STATUS;
             strcpy(status.firstThStatus, "preparing tests");
-            screenTest(&status);
-            buzzerMelody(StartMelody);
+            screenTestDump(&status);
+            buzzerMelody(StartNotification);
 
             return (ES_STATE_HANDLED());
         }
@@ -655,11 +755,13 @@ static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
                 wspace->firstTh.isCancelled  = false;
                 wspace->firstTh.isExecuted   = false;
                 wspace->firstTh.rawMaxValue  = 0u;
+                wspace->firstTh.time         = configGetFirstThTimeout();
                 wspace->secondTh.isValid     = false;
                 wspace->secondTh.isCancelled = false;
                 wspace->secondTh.isExecuted  = false;
                 wspace->secondTh.rawMaxValue = 0u;
-                wspace->rawIdleVacuum = getDutRawValue();
+                wspace->firstTh.time         = configGetSecondThTimeout();
+                wspace->rawIdleVacuum        = getDutRawValue();
 
                 return (ES_STATE_TRANSITION(stateTestFirstTh));
             } else {
@@ -681,7 +783,7 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
             wspace->firstTh.isExecuted = true;
             esVTimerStart(
                 &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(getFirstThTimeout()),
+                ES_VTMR_TIME_TO_TICK_MS(configGetFirstThTimeout()),
                 timeout,
                 (void *)FIRST_TH_TIMEOUT_);
             esVTimerStart(
@@ -707,7 +809,7 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
             status.mask  = SCREEN_TEST_EN_FIRST_INFO | SCREEN_TEST_EN_FIRST_PROGRESS;
             status.firstThVal      = rawValue;
             status.firstThProgress = 1024;
-            screenTest(&status);
+            screenTestDump(&status);
 
             if (isDutDetected()) {
                 
@@ -720,9 +822,11 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
                         wspace->firstTh.rawMaxValue = rawVacuum;
                     }
 
-                    if (rawVacuum >= getFirstThRawVacuum()) {
+                    if (rawVacuum >= configGetFirstThRawVacuum()) {
                         wspace->firstTh.isValid = true;
-                        wspace->secondTh.rawMaxValue = wspace->firstTh.rawMaxValue;
+                        wspace->firstTh.time = configGetFirstThTimeout() -
+                            esVTimerGetRemaining(&wspace->timeout);
+                        wspace->secondTh.rawMaxValue = wspace->firstTh.rawMaxValue; /* Set the maxumum value for the second pass, too       */
 
                         return (ES_STATE_TRANSITION(stateTestSecondTh));
                     }
@@ -731,7 +835,7 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
                 motorDisable();
                 wspace->firstTh.isCancelled = true;
 
-                return (ES_STATE_TRANSITION(stateTestOverview));
+                return (ES_STATE_TRANSITION(stateTestResults));
             }
 
             return (ES_STATE_HANDLED());
@@ -739,7 +843,7 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
         case FIRST_TH_TIMEOUT_: {
             motorDisable();
 
-            return (ES_STATE_TRANSITION(stateTestOverview));
+            return (ES_STATE_TRANSITION(stateTestResults));
         }
         case ES_EXIT : {
             esVTimerCancel(&wspace->refresh);
@@ -759,8 +863,16 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
     switch (event->id) {
         case ES_ENTRY: {
             wspace->secondTh.isExecuted = true;
-            esVTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(getSecondThTimeout()), timeout, (void *)SECOND_TH_TIMEOUT_);
-            esVTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), timeout, (void *)SECOND_TH_REFRESH_);
+            esVTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(configGetSecondThTimeout()),
+                timeout,
+                (void *)SECOND_TH_TIMEOUT_);
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
+                timeout,
+                (void *)SECOND_TH_REFRESH_);
             motorEnable();
 
             return (ES_STATE_HANDLED());
@@ -782,7 +894,7 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
             strcpy(status.firstThStatus, "PASSED");
             status.secondThVal      = rawValue;
             status.secondThProgress = 1024;
-            screenTest(&status);
+            screenTestDump(&status);
 
             if (isDutDetected()) {
 
@@ -795,25 +907,26 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
                         wspace->secondTh.rawMaxValue = rawVacuum;
                     }
 
-                    if (rawVacuum >= getFirstThRawVacuum()) {
+                    if (rawVacuum >= configGetFirstThRawVacuum()) {
                         wspace->secondTh.isValid = true;
-                        wspace->secondTh.rawMaxValue = wspace->secondTh.rawMaxValue;
+                        wspace->secondTh.time = configGetSecondThTimeout() -
+                            esVTimerGetRemaining(&wspace->timeout);
 
-                        return (ES_STATE_TRANSITION(stateTestOverview));
+                        return (ES_STATE_TRANSITION(stateTestResults));
                     }
                 }
             } else {
                 motorDisable();
                 wspace->secondTh.isCancelled = true;
 
-                return (ES_STATE_TRANSITION(stateTestOverview));
+                return (ES_STATE_TRANSITION(stateTestResults));
             }
 
             return (ES_STATE_HANDLED());
         }
         case WAKEUP_TIMEOUT_: {
 
-            return (ES_STATE_TRANSITION(stateTestOverview));
+            return (ES_STATE_TRANSITION(stateTestResults));
         }
         case ES_EXIT: {
             esVTimerCancel(&wspace->refresh);
@@ -829,71 +942,91 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
     }
 }
 
-static esAction stateTestOverview(struct wspace * wspace, const esEvent * event) {
+static esAction stateTestResults(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            struct screenTest status;
+            switch (evaluateTest(wspace)) {
+                case TEST_SUCCESS : {
+                    wspace->notification = SuccessNotification;
+
+                    break;
+                }
+                case TEST_CANCELLED : {
+                    wspace->notification = ConfusedNotification;
+
+                    break;
+                }
+                default : {
+                    wspace->notification = FailNotification;
+                }
+            }
+            buzzerMelody(wspace->notification);
+            screenTestPrepare(wspace);
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_INIT: {
+
+            return (ES_STATE_TRANSITION(stateTestResultsNotify));
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY : {
             esVTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 timeout,
-                (void *)TEST_OVERVIEW_REFRESH_);
-
-            if (wspace->firstTh.isValid && wspace->secondTh.isValid) {
-                buzzerMelody(SuccessMelody);
-                status.title = SCREEN_TEST_SUCCESS;
-            } else if (wspace->firstTh.isCancelled || wspace->secondTh.isCancelled) {
-                buzzerMelody(ConfusedMelody);
-                status.title = SCREEN_TEST_CANCELLED;
-            } else {
-                buzzerMelody(FailMelody);
-                status.title = SCREEN_TEST_FAILED;
-            }
-
-            if (wspace->firstTh.isValid) {
-                strcpy(status.firstThStatus, "PASSED");
-            } else if (wspace->firstTh.isCancelled) {
-                strcpy(status.firstThStatus, "CANCELLED");
-            } else if (wspace->firstTh.isExecuted == false) {
-                strcpy(status.firstThStatus, "SKIPPED");
-            } else {
-                strcpy(status.firstThStatus, "FAILED");
-            }
-            
-            if (wspace->secondTh.isValid) {
-                strcpy(status.secondThStatus, "PASSED");
-            } else if (wspace->secondTh.isCancelled) {
-                strcpy(status.secondThStatus, "CANCELLED");
-            } else if (wspace->secondTh.isExecuted == false) {
-                strcpy(status.secondThStatus, "SKIPPED");
-            } else {
-                strcpy(status.secondThStatus, "FAILED");
-            }
-            status.mask = SCREEN_TEST_EN_FIRST_INFO  | SCREEN_TEST_EN_FIRST_STATUS  |
-                          SCREEN_TEST_EN_SECOND_INFO | SCREEN_TEST_EN_SECOND_STATUS |
-                          SCREEN_TEST_EN_BUTTON;
-            status.firstThVal  = wspace->firstTh.rawMaxValue;
-            status.secondThVal = wspace->secondTh.rawMaxValue;
-            strcpy(status.button, "Continue");
-            screenTest(&status);
+                (void *)TEST_RESULTS_NOTIFY_REFRESH_);
+            esVTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(*wspace->notification),
+                timeout,
+                (void *)TEST_RESULTS_NOTIFY_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
-        case TEST_OVERVIEW_REFRESH_: {
+        case ES_EXIT: {
+            esVTimerCancel(&wspace->refresh);
+            esVTimerCancel(&wspace->timeout);
 
+            return (ES_STATE_HANDLED());
+        }
+        case TEST_RESULTS_NOTIFY_REFRESH_: {
             if (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG) == 'B') {
-                
+
                 return (ES_STATE_TRANSITION(stateMain));
             } else {
                 esVTimerStart(
                     &wspace->refresh,
                     ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                     timeout,
-                    (void *)TEST_OVERVIEW_REFRESH_);
+                    (void *)TEST_RESULTS_NOTIFY_REFRESH_);
 
                 return (ES_STATE_HANDLED());
             }
+        }
+        case TEST_RESULTS_NOTIFY_TIMEOUT_: {
+            screenTestDump(&wspace->screen.test);
+            screenTestToggleBackground(wspace);
+            wspace->notification++;
+
+            if (*wspace->notification != 0) {
+                esVTimerStart(
+                    &wspace->timeout,
+                    ES_VTMR_TIME_TO_TICK_MS(*wspace->notification),
+                    timeout,
+                    (void *)TEST_RESULTS_NOTIFY_TIMEOUT_);
+            }
+            return (ES_STATE_HANDLED());
         }
         default : {
 
