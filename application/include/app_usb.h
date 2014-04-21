@@ -20,6 +20,7 @@ extern "C" {
 void initUsbModule(void);
 void appUsb(void);
 bool isUsbDetected(void);
+bool isUsbMounted(void);
 uint32_t snprintUsbStatus(char * buffer);
 
 #ifdef	__cplusplus
