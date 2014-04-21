@@ -1,12 +1,16 @@
 [submodule "esolid-base"]
 	path = esolid-base
 	url = https://github.com/nradulovic/esolid-base.git
+	branch = master
 [submodule "esolid-vtimer"]
 	path = esolid-vtimer
 	url = https://github.com/nradulovic/esolid-vtimer.git
+	branch = master
 [submodule "esolid-mem"]
 	path = esolid-mem
 	url = https://github.com/nradulovic/esolid-mem.git
+	branch = master
 [submodule "esolid-eds"]
 	path = esolid-eds
 	url = https://github.com/nradulovic/esolid-eds.git
+	branch = master
