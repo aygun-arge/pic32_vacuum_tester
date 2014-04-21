@@ -9,6 +9,7 @@
 #define	APP_STORAGE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -22,7 +23,31 @@ enum storageStatus {
     STORAGE_HANDLE_NOT_EXISTS
 };
 
+struct storageTableEntry {
+    char *              name;
+    uint32_t            id;
+    uint32_t            size;
+};
+
+struct storageSpace;
+
 void initStorage(void);
+enum storageStatus storageRegisterTable(const struct storageTableEntry * entry);
+enum storageStatus storageOpen(uint32_t id, struct storageSpace ** space);
+enum storageStatus storageClear(struct storageSpace * space);
+enum storageStatus storageRead(
+    struct storageSpace * space,
+    uint8_t *           buffer,
+    size_t              size,
+    size_t *            read);
+enum storageStatus storageSetPos(struct storageSpace * space, uint32_t pos);
+enum storageStatus storageWrite(
+    struct storageSpace * space,
+    const uint8_t *     buffer,
+    size_t              size,
+    size_t *            written);
+enum storageStatus storageGetSize(struct storageSpace * space, size_t * size);
+enum storageStatus storageGetEmpty(struct storageSpace * space, size_t * empty);
 
 #ifdef	__cplusplus
 }
