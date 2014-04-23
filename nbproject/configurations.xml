@@ -424,7 +424,7 @@
         <property key="programoptions.uselvpprogramming" value="false"/>
         <property key="voltagevalue" value="3.25"/>
       </ICD3PlatformTool>
-      <item path="application/source/epa_gui.c" ex="false" overriding="true">
+      <item path="application/source/epa_gui.c" ex="false" overriding="false">
         <C32>
           <property key="additional-warnings" value="true"/>
           <property key="enable-app-io" value="false"/>
@@ -438,7 +438,7 @@
           <property key="generate-micro-compressed-code" value="false"/>
           <property key="isolate-each-function" value="true"/>
           <property key="make-warnings-into-errors" value="false"/>
-          <property key="optimization-level" value="-Os"/>
+          <property key="optimization-level" value=""/>
           <property key="place-data-into-section" value="true"/>
           <property key="post-instruction-scheduling" value="default"/>
           <property key="pre-instruction-scheduling" value="default"/>
@@ -449,6 +449,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
