@@ -10,8 +10,7 @@
 
 #include <stdint.h>
 
-#define CONFIG_HARDWARE_VERSION         "Rev. 02"
-#define CONFIG_SOFTWARE_VERSION         "1.0 Beta"
+
 
 #define PATCH_LEVEL_POWER_STATUS_1      1
 

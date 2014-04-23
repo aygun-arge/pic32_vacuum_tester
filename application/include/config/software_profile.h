@@ -20,7 +20,10 @@ extern "C" {
 // *****************************************************************************
 #define USE_USB_INTERFACE               // USB host MSD library
 
+#define CONFIG_SOFTWARE_VERSION         "1.0.4 Beta"
 
+#define BUILD_TIME                      __TIME__
+#define BUILD_DATE                      __DATE__
     
 #ifdef	__cplusplus
 }

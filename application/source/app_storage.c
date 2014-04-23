@@ -211,7 +211,7 @@ enum storageStatus storageClearSpace(struct storageSpace * space) {
     uint32_t            sectorSize;
     enum flashError     flashError;
 
-    ES_ASSERT(ES_ERROR_ARG_OUT_OF_RANGE, space->id != (uint32_t)-1);
+    ES_ASSERT(ES_API_USAGE, space->id != (uint32_t)-1);
 
     if (AllocationTable.signature != STORAGE_SIGNATURE) {
         goto STORAGE_CLEAR_NOT_MOUNTED;

@@ -8,6 +8,8 @@
 #include "driver/rtc.h"
 
 #include "FT_Platform.h"
+#include "HardwareProfile.h"
+#include "software_profile.h"
 
 #include "app_config.h"
 #include "app_time.h"
@@ -48,6 +50,7 @@
 
 /*--  Normal fonts  ----------------------------------------------------------*/
 #define DEF_N1_FONT_SIZE                27
+#define DEF_N2_FONT_SIZE                29
 
 /*--  Big fonts  -------------------------------------------------------------*/
 #define DEF_B1_FONT_SIZE                30
@@ -87,12 +90,16 @@
     entry(stateTestSecondTh,        TOP)                                        \
     entry(stateTestResults,         TOP)                                        \
     entry(stateTestResultsNotify,   TOP)                                        \
+    entry(stateTestResultsSaving,   TOP)                                        \
     entry(stateSettings,            TOP)                                        \
+    entry(stateSettingsAbout,       TOP)                                        \
     entry(stateSettingsAdmin,       TOP)                                        \
+    entry(stateSettingsLcdCalib,    TOP)                                        \
     entry(stateExport,              TOP)                                        \
     entry(stateExportInsert,        TOP)                                        \
     entry(stateExportMount,         TOP)                                        \
     entry(stateExportChoose,        TOP)                                        \
+    entry(stateExportSaving,        TOP)                                        \
     entry(stateWelcome,             TOP)
 
 /*======================================================  LOCAL DATA TYPES  ==*/
@@ -113,8 +120,9 @@ enum localEvents {
     TEST_RESULTS_NOTIFY_REFRESH_,
     TEST_RESULTS_NOTIFY_TIMEOUT_,
     SETTINGS_REFRESH_,
+    SETTINGS_ABOUT_REFRESH_,
     EXPORT_INSERT_REFRESH_,
-    REFRESH_
+    EXPORT_CHOOSE_REFRESH_
 };
 
 enum testTitle {
@@ -161,6 +169,12 @@ struct screenTest {
     char                button[16];
 };
 
+struct screenExportChoose {
+    uint32_t            begin[3];
+    uint32_t            end[3];
+    uint32_t            focus;
+};
+
 struct wspace {
     struct esVTimer     timeout;
     struct esVTimer     refresh;
@@ -171,6 +185,7 @@ struct wspace {
     union screen {
         struct screenMain   main;
         struct screenTest   test;
+        struct screenExportChoose exportChoose;
     }                   screen;
     const uint8_t *     notification;
 };
@@ -196,12 +211,16 @@ static esAction stateTestFirstTh        (struct wspace *, const esEvent *);
 static esAction stateTestSecondTh       (struct wspace *, const esEvent *);
 static esAction stateTestResults        (struct wspace *, const esEvent *);
 static esAction stateTestResultsNotify  (struct wspace *, const esEvent *);
+static esAction stateTestResultsSaving  (struct wspace *, const esEvent *);
 static esAction stateSettings           (struct wspace *, const esEvent *);
+static esAction stateSettingsAbout      (struct wspace *, const esEvent *);
 static esAction stateSettingsAdmin      (struct wspace *, const esEvent *);
+static esAction stateSettingsLcdCalib   (struct wspace *, const esEvent *);
 static esAction stateExport             (struct wspace *, const esEvent *);
 static esAction stateExportInsert       (struct wspace *, const esEvent *);
 static esAction stateExportMount        (struct wspace *, const esEvent *);
 static esAction stateExportChoose       (struct wspace *, const esEvent *);
+static esAction stateExportSaving       (struct wspace *, const esEvent *);
 
 /*=======================================================  LOCAL VARIABLES  ==*/
 
@@ -306,12 +325,29 @@ static void timeout(void * arg) {
     }
 }
 
+static uint8_t getKey(void) {
+    static uint16_t oldState;
+    uint16_t        newState;
+    uint16_t        retval;
+
+    newState = Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG);
+
+    if ((oldState != 0) && (newState == 0)) {
+        retval = oldState;
+    } else {
+        retval = 0;
+    }
+    oldState = newState;
+
+    return (retval);
+}
+
 static void fadeIn(void) {
     uint32_t    pwm;
 
     for (pwm = 0; pwm <=128 ; pwm++) {
         Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, pwm);
-        Ft_Gpu_Hal_Sleep(2);//sleep for 2 ms
+        Ft_Gpu_Hal_Sleep(4);//sleep for 2 ms
     }
 }
 
@@ -324,28 +360,34 @@ static void fadeOut(void) {
     }
 }
 
+static void fadeOff(void) {
+    Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, 128);
+}
+
+static void constructBackground(void) {
+    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
+    Ft_Gpu_CoCmd_Gradient(&Gpu, 0,0, 0x7d7d7d, 0, DISP_HEIGHT, 0xe0e0e0);
+}
+
+static void constructTitle(const char * title) {
+    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, title);
+}
+
 static void screenWelcome(void) {
     char        buffer[100];
-    uint32_t    length;
 
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, WELCOME_GREETING);
-    memcpy(buffer, WELCOME_HW_VERSION, sizeof(WELCOME_HW_VERSION));
-    length = sizeof(WELCOME_HW_VERSION) - 1u;
-    memcpy(&buffer[length], CONFIG_HARDWARE_VERSION, sizeof(CONFIG_HARDWARE_VERSION));
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
-    memcpy(buffer, WELCOME_SW_VERSION, sizeof(WELCOME_SW_VERSION));
-    length = sizeof(WELCOME_SW_VERSION) - 1u;
-    memcpy(&buffer[length], CONFIG_SOFTWARE_VERSION, sizeof(CONFIG_SOFTWARE_VERSION));
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
-    length = snprintRtcDate(buffer);
-    buffer[length] = '\0';
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
+    strcpy(buffer, BUILD_DATE);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
-    length = snprintRtcTime(buffer);
-    buffer[length] = '\0';
+    strcpy(buffer, BUILD_TIME);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 180, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 220, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
@@ -353,11 +395,26 @@ static void screenWelcome(void) {
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
 }
 
+static void screenSettingsAbout(void) {
+    Ft_Gpu_CoCmd_Dlstart(&Gpu);
+    constructBackground();
+    constructTitle("About");
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
+    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
+    Ft_Gpu_CoCmd_Swap(&Gpu);
+    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+}
+
 static void screenCalibrate(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
+    constructBackground();
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
     Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,"Please tap on the dot");
     Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
@@ -370,12 +427,10 @@ static void screenMain(struct screenMain * status) {
     char *              text;
 
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+    constructBackground();
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20,  20, 120,  40, DEF_N1_FONT_SIZE, 0, "Settings");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
@@ -390,7 +445,9 @@ static void screenMain(struct screenMain * status) {
     } else {
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
         Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('t'));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
         Ft_Gpu_CoCmd_Button(&Gpu, 80,  80, 160, 80, DEF_B1_FONT_SIZE, 0, "TEST");
+        Ft_Gpu_CoCmd_ColdStart(&Gpu);
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 0, 0));
         text = "Put the porator on the test pad.";
     }
@@ -408,6 +465,7 @@ static void screenMain(struct screenMain * status) {
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
 }
+
 static enum testResult evaluateTest(struct wspace * wspace) {
      if (wspace->firstTh.isValid && wspace->secondTh.isValid) {
 
@@ -483,47 +541,41 @@ static void screenTestDump(struct screenTest * status) {
         case SCREEN_TEST_PREPARING     :
         case SCREEN_TEST_1_IN_PROGRESS :
         case SCREEN_TEST_2_IN_PROGRESS : {
-            if (status->isBackgroundEnabled) {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-            } else {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-            }
-            Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-            Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test in progress");
+            constructBackground();
+            constructTitle("Test in progress");
             break;
         }
         case SCREEN_TEST_FAILED : {
             if (status->isBackgroundEnabled) {
                 Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 16, 16));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
             } else {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+                constructBackground();
             }
-            Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-            Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test failed");
+            constructTitle("Test failed");
             break;
         }
         case SCREEN_TEST_CANCELLED: {
             if (status->isBackgroundEnabled) {
                 Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 16));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
             } else {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+                constructBackground();
             }
-            Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-            Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test cancelled");
+            constructTitle("Test cancelled");
             break;
         }
         case SCREEN_TEST_SUCCESS: {
             if (status->isBackgroundEnabled) {
                 Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(16, 224, 16));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
             } else {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+                constructBackground();
             }
-            Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-            Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-            Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Test success");
+            constructTitle("Test success");
             break;
         }
     }
@@ -564,18 +616,31 @@ static void screenTestDump(struct screenTest * status) {
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
 }
 
+static void screenTestSaving(void) {
+    static uint32_t record = 12;
+    Ft_Gpu_CoCmd_Dlstart(&Gpu);
+    constructBackground();
+    constructTitle("Saving...");
+    Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Record number:");
+    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTER, record++);
+    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
+    Ft_Gpu_CoCmd_Swap(&Gpu);
+    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+}
+
 static void screenExportInsert(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Export");
+    constructBackground();
+    constructTitle("Export");
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, DEF_N1_FONT_SIZE, OPT_CENTER, "Please insert USB flash drive");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
     Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -583,11 +648,90 @@ static void screenExportInsert(void) {
 
 static void screenExportMount(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Export");
+    constructBackground();
+    constructTitle("Export");
     Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
+    Ft_Gpu_CoCmd_Swap(&Gpu);
+    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+}
+
+static void screenExportSaving(void) {
+    Ft_Gpu_CoCmd_Dlstart(&Gpu);
+    constructBackground();
+    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Saving data...");
+    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
+    Ft_Gpu_CoCmd_Swap(&Gpu);
+    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+}
+
+#define EXPORT_MONTH                    0
+#define EXPORT_DAY                      1
+#define EXPORT_YEAR                     2
+
+static void screenExportChoose(struct screenExportChoose * status) {
+    Ft_Gpu_CoCmd_Dlstart(&Gpu);
+    constructBackground();
+    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Export");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
+    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 180, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Export");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+
+    if (status->focus == 0) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 110, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 110, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
+    }
+
+    if (status->focus == 1) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 160, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 160, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
+    }
+
+    if (status->focus == 2) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 220, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 220, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
+    }
+    Ft_Gpu_CoCmd_Text(&Gpu, 135,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 185,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+
+    if (status->focus == 3) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 110, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 110, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
+    }
+
+    if (status->focus == 4) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 160, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 160, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
+    }
+
+    if (status->focus == 5) {
+        Ft_Gpu_CoCmd_Number(&Gpu, 220, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
+    } else {
+        Ft_Gpu_CoCmd_Number(&Gpu, 220, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
+    }
+    Ft_Gpu_CoCmd_Text(&Gpu, 135,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 185,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -595,9 +739,7 @@ static void screenExportMount(void) {
 
 static void screenSettings(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
+    constructBackground();
     Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Settings");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
@@ -607,7 +749,9 @@ static void screenSettings(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
     Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -615,9 +759,7 @@ static void screenSettings(void) {
 
 static void screenSettingsAdmin(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
+    constructBackground();
     Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Administration");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
@@ -630,8 +772,12 @@ static void screenSettingsAdmin(void) {
     Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Password");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('G'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 120, 130, 40, DEF_N1_FONT_SIZE, 0, "Parameters");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Clock");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -639,16 +785,16 @@ static void screenSettingsAdmin(void) {
 
 static void screenSettingsAuth(void) {
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
+    constructBackground();
     Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Enter password");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
     Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -729,7 +875,7 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
         }
         case WELCOME_WAIT_: {
             screenCalibrate();
-
+            
             return (ES_STATE_TRANSITION(stateMain));
         }
         default: {
@@ -758,7 +904,7 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case MAIN_REFRESH_: {
-            switch (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG)) {
+            switch (getKey()) {
                 case 'T' : {
 
                     return (ES_STATE_TRANSITION(statePreTest));
@@ -1068,9 +1214,9 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
             return (ES_STATE_HANDLED());
         }
         case TEST_RESULTS_NOTIFY_REFRESH_: {
-            if (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG) == 'B') {
+            if (getKey() == 'B') {
 
-                return (ES_STATE_TRANSITION(stateMain));
+                return (ES_STATE_TRANSITION(stateTestResultsSaving));
             } else {
                 esVTimerStart(
                     &wspace->refresh,
@@ -1102,6 +1248,29 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
     }
 }
 
+static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenTestSaving();
+            esVTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(1000),
+                timeout,
+                (void *)WAKEUP_TIMEOUT_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case WAKEUP_TIMEOUT_: {
+
+            return (ES_STATE_TRANSITION(stateMain));
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
 static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
@@ -1116,12 +1285,10 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
         }
         case SETTINGS_REFRESH_: {
 
-            switch (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG)) {
+            switch (getKey()) {
                 case 'A' : {
-                    /*
-                     * Todo: show welcome
-                     */
-                    break;
+
+                    return (ES_STATE_TRANSITION(stateSettingsAbout));
                 }
                 case 'U' : {
 
@@ -1150,16 +1317,100 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
     }
 }
 
+static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event) {
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenSettingsAbout();
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)SETTINGS_ABOUT_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case SETTINGS_ABOUT_REFRESH_: {
+            switch (getKey()) {
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettings));
+                }
+            }
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)SETTINGS_ABOUT_REFRESH_);
+            
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
 static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * event) {
 
+    switch (event->id) {
+        case ES_INIT: {
+            return (ES_STATE_TRANSITION(stateSettingsAdmin));
+        }
+    }
     return (ES_STATE_IGNORED());
+}
+
+static esAction stateSettingsLcdCalib(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenCalibrate();
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_INIT: {
+
+            return (ES_STATE_TRANSITION(stateSettingsAdmin));
+        }
+        default: {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
 }
 
 static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
+            screenSettingsAdmin();
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)EXPORT_INSERT_REFRESH_);
 
+            return (ES_STATE_HANDLED());
+        }
+        case EXPORT_INSERT_REFRESH_: {
+            switch (getKey()) {
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettings));
+                }
+                case 'L' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsLcdCalib));
+                }
+            }
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)EXPORT_INSERT_REFRESH_);
+
+            return (ES_STATE_HANDLED());
         }
     }
     return (ES_STATE_IGNORED());
@@ -1201,7 +1452,7 @@ static esAction stateExportInsert(struct wspace * wspace, const esEvent * event)
             return (ES_STATE_HANDLED());
         }
         case EXPORT_INSERT_REFRESH_: {
-            if (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG) == 'B') {
+            if (getKey() == 'B') {
 
                 return (ES_STATE_TRANSITION(stateMain));
             } else if (isUsbDetected()) {
@@ -1249,7 +1500,109 @@ static esAction stateExportMount(struct wspace * wspace, const esEvent * event) 
 
 static esAction stateExportChoose(struct wspace * wspace, const esEvent * event) {
 
-    return (ES_STATE_IGNORED());
+    switch (event->id) {
+        case ES_ENTRY: {
+            wspace->screen.exportChoose.begin[EXPORT_DAY]   = 20;
+            wspace->screen.exportChoose.begin[EXPORT_MONTH] = 4;
+            wspace->screen.exportChoose.begin[EXPORT_YEAR]  = 2014;
+            wspace->screen.exportChoose.end[EXPORT_DAY]   = 20;
+            wspace->screen.exportChoose.end[EXPORT_MONTH] = 4;
+            wspace->screen.exportChoose.end[EXPORT_YEAR]  = 2014;
+            wspace->screen.exportChoose.focus             = 0;
+            screenExportChoose(&wspace->screen.exportChoose);
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)EXPORT_CHOOSE_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EXPORT_CHOOSE_REFRESH_: {
+
+            if (isUsbDetected() == false) {
+                
+                return (ES_STATE_TRANSITION(stateMain));
+            }
+            switch (getKey()) {
+                case 'B': {
+
+                    return (ES_STATE_TRANSITION(stateMain));
+                }
+                case '>' : {
+                    if (wspace->screen.exportChoose.focus != 5u) {
+                        wspace->screen.exportChoose.focus++;
+                    }
+                    break;
+                }
+                case '<' : {
+                    if (wspace->screen.exportChoose.focus != 0u) {
+                        wspace->screen.exportChoose.focus--;
+                    }
+                    break;
+                }
+                case '+' : {
+                    if (wspace->screen.exportChoose.focus < 3) {
+                        wspace->screen.exportChoose.begin[wspace->screen.exportChoose.focus]++;
+                    } else {
+                        wspace->screen.exportChoose.end[wspace->screen.exportChoose.focus - 3]++;
+                    }
+                    break;
+                }
+                case '-' : {
+                    if (wspace->screen.exportChoose.focus < 3) {
+                        wspace->screen.exportChoose.begin[wspace->screen.exportChoose.focus]--;
+                    } else {
+                        wspace->screen.exportChoose.end[wspace->screen.exportChoose.focus - 3]--;
+                    }
+                    break;
+                }
+                case 'E' : {
+
+                    return (ES_STATE_TRANSITION(stateExportSaving));
+                }
+                default: {
+
+                }
+            }
+            screenExportChoose(&wspace->screen.exportChoose);
+            esVTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                timeout,
+                (void *)EXPORT_CHOOSE_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+
+static esAction stateExportSaving(struct wspace * wspace, const esEvent * event) {
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenExportSaving();
+            esVTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(2000),
+                timeout,
+                (void *)WAKEUP_TIMEOUT_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case WAKEUP_TIMEOUT_: {
+
+            return (ES_STATE_TRANSITION(stateExport));
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
 }
 
 /*===================================  GLOBAL PRIVATE FUNCTION DEFINITIONS  ==*/

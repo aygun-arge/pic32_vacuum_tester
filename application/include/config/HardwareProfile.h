@@ -29,7 +29,7 @@
 
 /**@brief       Defines used hardware revision
  */
-#define HARDWARE_VERSION                "Rev.02"
+#define CONFIG_HARDWARE_VERSION         "Rev.02"
 
 #endif  
 

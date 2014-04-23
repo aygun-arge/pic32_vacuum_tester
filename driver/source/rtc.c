@@ -16,8 +16,8 @@ bool isRtcActive(void) {
 void rtcGetTime(struct rtcTime * time) {
     time->year   = 2014;
     time->month  = 4;
-    time->day    = 16;
-    time->hour   = 22;
-    time->minute = 12;
+    time->day    = 23;
+    time->hour   = 21;
+    time->minute = 53;
     time->second = 16;
 }
