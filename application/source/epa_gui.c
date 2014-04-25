@@ -140,6 +140,11 @@ enum testResult {
     TEST_CANCELLED
 };
 
+enum buttonBackPos {
+    DOWN_LEFT,
+    DOWN_MIDDLE,
+};
+
 struct testStatus {
     bool                isValid;
     bool                isCancelled;
@@ -368,11 +373,28 @@ static void constructBackground(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-    Ft_Gpu_CoCmd_Gradient(&Gpu, 0,0, 0x7d7d7d, 0, DISP_HEIGHT, 0xe0e0e0);
+    Ft_Gpu_CoCmd_Gradient(&Gpu, 0,0, 0x707070, 0, DISP_HEIGHT, 0xe0e0e0);
 }
 
 static void constructTitle(const char * title) {
     Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, title);
+}
+
+static void constructButtonBack(enum buttonBackPos position) {
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(12, 128, 48));
+
+    switch (position) {
+        case DOWN_LEFT: {
+            Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
+            break;
+        }
+        default : {
+            Ft_Gpu_CoCmd_Button(&Gpu, 98, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
+        }
+    }
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
 }
 
 static void screenWelcome(void) {
@@ -402,11 +424,7 @@ static void screenSettingsAbout(void) {
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_MIDDLE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -432,9 +450,9 @@ static void screenMain(struct screenMain * status) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  20, 120,  40, DEF_N1_FONT_SIZE, 0, "Settings");
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  20, 130,  40, DEF_N1_FONT_SIZE, 0, "Settings");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 180, 20, 120,  40, DEF_N1_FONT_SIZE, 0, "Export");
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 20, 130,  40, DEF_N1_FONT_SIZE, 0, "Export");
 
     if (status->isDutDetected) {
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
@@ -609,7 +627,7 @@ static void screenTestDump(struct screenTest * status) {
         Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
         Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
         Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-        Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, status->button);
+        Ft_Gpu_CoCmd_Button(&Gpu, 95, 180, 130, 40, DEF_N1_FONT_SIZE, 0, status->button);
     }
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
@@ -634,13 +652,7 @@ static void screenExportInsert(void) {
     constructBackground();
     constructTitle("Export");
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, DEF_N1_FONT_SIZE, OPT_CENTER, "Please insert USB flash drive");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_MIDDLE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -685,53 +697,50 @@ static void screenExportChoose(struct screenExportChoose * status) {
     Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
     Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_LEFT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 180, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Export");
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Export");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
 
     if (status->focus == 0) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 110, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 110, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
     }
 
     if (status->focus == 1) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 160, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 160, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
     }
 
     if (status->focus == 2) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 220, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 220, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
     }
-    Ft_Gpu_CoCmd_Text(&Gpu, 135,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-    Ft_Gpu_CoCmd_Text(&Gpu, 185,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 125,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 175,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
 
     if (status->focus == 3) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 110, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 110, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
     }
 
     if (status->focus == 4) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 160, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 160, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
     }
 
     if (status->focus == 5) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 220, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 220, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
     }
-    Ft_Gpu_CoCmd_Text(&Gpu, 135,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-    Ft_Gpu_CoCmd_Text(&Gpu, 185,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 125,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_CoCmd_Text(&Gpu, 175,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -747,11 +756,9 @@ static void screenSettings(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('A'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "About");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_MIDDLE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -774,10 +781,7 @@ static void screenSettingsAdmin(void) {
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 120, 130, 40, DEF_N1_FONT_SIZE, 0, "Parameters");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Clock");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_LEFT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -791,10 +795,7 @@ static void screenSettingsAuth(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(16, 176, 64));
-    Ft_Gpu_CoCmd_Button(&Gpu, 100, 180, 120, 40, DEF_N1_FONT_SIZE, 0, "Back");
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
+    constructButtonBack(DOWN_MIDDLE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
@@ -946,8 +947,6 @@ static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             struct screenTest status;
-            
-
             esVTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_PRE_TEST_MS),
