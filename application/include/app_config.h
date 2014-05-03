@@ -9,7 +9,7 @@
 #define	APP_CONFIG_H
 
 #include <stdint.h>
-
+#include <stdbool.h>
 
 
 #define PATCH_LEVEL_POWER_STATUS_1      1
@@ -24,6 +24,8 @@ uint32_t configGetFirstThTimeout(void);
 uint32_t configGetFirstThRawVacuum(void);
 uint32_t configGetSecondThTimeout(void);
 uint32_t configGetSecondThValue(void);
+bool configIsPasswordCharValid(char character, uint8_t position);
+uint32_t configPasswordLength(void);
 
 #ifdef	__cplusplus
 }

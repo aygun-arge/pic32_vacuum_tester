@@ -94,7 +94,7 @@ int main(void) {
         &esGlobalHeapMemClass,
         &HeapMem,
         heapBuff,
-        4096,
+        8192,
         0);                                                                     /* Set-up heap memory                                       */
 
     /*--  Initialize virtual timers  -----------------------------------------*/

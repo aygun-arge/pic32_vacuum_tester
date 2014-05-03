@@ -16,10 +16,12 @@
 #include "app_motor.h"
 #include "app_psensor.h"
 #include "app_battery.h"
+#include "app_timer.h"
 #include "app_usb.h"
 
 #include "logo.h"
 #include "app_buzzer.h"
+#include "app_timer.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -28,7 +30,7 @@
 #define CONFIG_TEST_FAIL_MS             5000
 #define CONFIG_TEST_OVERVIEW_MS         5000
 #define CONFIG_TEST_REFRESH_MS          20
-#define CONFIG_MAIN_REFRESH_MS          20
+#define CONFIG_TOUCH_REFRESH_MS         20
 
 #define DEF_VACUUM_UNIT                 "mmHg"
 
@@ -93,6 +95,7 @@
     entry(stateTestResultsSaving,   TOP)                                        \
     entry(stateSettings,            TOP)                                        \
     entry(stateSettingsAbout,       TOP)                                        \
+    entry(stateSettingsAuthorize,   TOP)                                        \
     entry(stateSettingsAdmin,       TOP)                                        \
     entry(stateSettingsLcdCalib,    TOP)                                        \
     entry(stateExport,              TOP)                                        \
@@ -120,6 +123,7 @@ enum localEvents {
     TEST_RESULTS_NOTIFY_REFRESH_,
     TEST_RESULTS_NOTIFY_TIMEOUT_,
     SETTINGS_REFRESH_,
+    SETTINGS_AUTH_REFRESH_,
     SETTINGS_ABOUT_REFRESH_,
     EXPORT_INSERT_REFRESH_,
     EXPORT_CHOOSE_REFRESH_
@@ -181,8 +185,8 @@ struct screenExportChoose {
 };
 
 struct wspace {
-    struct esVTimer     timeout;
-    struct esVTimer     refresh;
+    struct appTimer     timeout;
+    struct appTimer     refresh;
     uint32_t            retry;
     uint32_t            rawIdleVacuum;
     struct testStatus   firstTh;
@@ -192,6 +196,12 @@ struct wspace {
         struct screenTest   test;
         struct screenExportChoose exportChoose;
     }                   screen;
+    union data {
+        struct settingsAuth {
+            uint32_t            counter;
+            uint32_t            numOfCharactes;
+        }                   settingsAuthorize;
+    }                   data;
     const uint8_t *     notification;
 };
 
@@ -199,8 +209,6 @@ struct wspace {
 
 static void gpuInitEarly(void);
 static void gpuInitLate(void);
-
-static void timeout(void * arg);
 
 static void screenWelcome(void);
 static void screenMain(struct screenMain * status);
@@ -219,6 +227,7 @@ static esAction stateTestResultsNotify  (struct wspace *, const esEvent *);
 static esAction stateTestResultsSaving  (struct wspace *, const esEvent *);
 static esAction stateSettings           (struct wspace *, const esEvent *);
 static esAction stateSettingsAbout      (struct wspace *, const esEvent *);
+static esAction stateSettingsAuthorize  (struct wspace *, const esEvent *);
 static esAction stateSettingsAdmin      (struct wspace *, const esEvent *);
 static esAction stateSettingsLcdCalib   (struct wspace *, const esEvent *);
 static esAction stateExport             (struct wspace *, const esEvent *);
@@ -233,7 +242,7 @@ static const ES_MODULE_INFO_CREATE("GUI", CONFIG_EPA_GUI_NAME, "Nenad Radulovic"
 
 static const esSmTable      GuiTable[] = ES_STATE_TABLE_INIT(GUI_TABLE);
 
-static const uint8_t StartNotification[] = {20, 100, 20, 0};
+static const uint8_t OkNotification[] = {20, 100, 20, 0};
 static const uint8_t FailNotification[] = {150, 150, 175, 175, 200, 0};
 static const uint8_t ConfusedNotification[] = {20, 100, 20, 100, 40, 100, 40, 100, 60, 0};
 static const uint8_t SuccessNotification[] = {40, 100, 40, 100, 40, 0};
@@ -314,20 +323,6 @@ static void gpuInitLate(void) {
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_PCLK,     DISP_PCLK);                             /* After this display is visible on the LCD                 */
-}
-
-static void timeout(void * arg) {
-    struct esEvent *    timeout;
-    esError             error;
-
-    ES_ENSURE(error = esEventCreate(
-        sizeof(struct esEvent),
-        (uint32_t)arg,
-        &timeout));
-
-    if (error == ES_ERROR_NONE) {
-        esEpaSendAheadEvent(Gui, timeout);
-    }
 }
 
 static uint8_t getKey(void) {
@@ -807,8 +802,8 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_INIT: {
             wspace->retry = 10u;
-            esVTimerInit(&wspace->timeout);
-            esVTimerInit(&wspace->refresh);
+            appTimerInit(&wspace->timeout);
+            appTimerInit(&wspace->refresh);
             gpuInitEarly();
 
             return (ES_STATE_TRANSITION(stateWakeUpLcd));
@@ -833,11 +828,10 @@ static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
                 return (ES_STATE_TRANSITION(stateWelcome));
             } else if (wspace->retry != 0u) {
                 wspace->retry--;
-                esVTimerStart(
+                appTimerStart(
                     &wspace->timeout,
                     ES_VTMR_TIME_TO_TICK_MS(100),
-                    timeout,
-                    (void *)WAKEUP_TIMEOUT_);
+                    WAKEUP_TIMEOUT_);
 
                 return (ES_STATE_HANDLED());
             } else {
@@ -850,7 +844,7 @@ static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
             return (ES_STATE_TRANSITION(stateWakeUpLcd));
         }
         case ES_EXIT: {
-            esVTimerCancel(&wspace->timeout);
+            appTimerCancel(&wspace->timeout);
 
             return (ES_STATE_HANDLED());
         }
@@ -866,11 +860,10 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
         case ES_ENTRY: {
             screenWelcome();
             fadeIn();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TIME_WELCOME),
-                timeout,
-                (void *)WELCOME_WAIT_);
+                WELCOME_WAIT_);
 
             return (ES_STATE_HANDLED());
         }
@@ -896,11 +889,10 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             snprintBatteryStatus(status.battery);
             status.isDutDetected = isDutDetected();
             screenMain(&status);
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)MAIN_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                MAIN_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -930,7 +922,7 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             return (ES_STATE_TRANSITION(stateMain));
         }
         case ES_EXIT: {
-            esVTimerCancel(&wspace->refresh);
+            appTimerCancel(&wspace->refresh);
 
             return (ES_STATE_HANDLED());
         }
@@ -947,16 +939,15 @@ static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             struct screenTest status;
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_PRE_TEST_MS),
-                timeout,
-                (void *)PRE_TEST_WAIT_);
+                PRE_TEST_WAIT_);
             status.title = SCREEN_TEST_PREPARING;
             status.mask  = SCREEN_TEST_EN_FIRST_STATUS;
             strcpy(status.firstThStatus, "preparing tests");
             screenTestDump(&status);
-            buzzerMelody(StartNotification);
+            buzzerMelody(OkNotification);
 
             return (ES_STATE_HANDLED());
         }
@@ -993,16 +984,14 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
     switch (event->id) {
         case ES_ENTRY: {
             wspace->firstTh.isExecuted = true;
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(configGetFirstThTimeout()),
-                timeout,
-                (void *)FIRST_TH_TIMEOUT_);
-            esVTimerStart(
+                FIRST_TH_TIMEOUT_);
+            appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                timeout,
-                (void *)FIRST_TH_REFRESH_);
+                FIRST_TH_REFRESH_);
             motorEnable();
 
             return (ES_STATE_HANDLED());
@@ -1011,11 +1000,10 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
             uint32_t rawValue;
             struct screenTest status;
 
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                timeout,
-                (void *)FIRST_TH_REFRESH_);
+                FIRST_TH_REFRESH_);
             rawValue = getDutRawValue();
             status.title = SCREEN_TEST_1_IN_PROGRESS;
             status.mask  = SCREEN_TEST_EN_FIRST_INFO | SCREEN_TEST_EN_FIRST_PROGRESS;
@@ -1037,7 +1025,7 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
                     if (rawVacuum >= configGetFirstThRawVacuum()) {
                         wspace->firstTh.isValid = true;
                         wspace->firstTh.time = configGetFirstThTimeout() -
-                            esVTimerGetRemaining(&wspace->timeout);
+                            appTimerGetRemaining(&wspace->timeout);
                         wspace->secondTh.rawMaxValue = wspace->firstTh.rawMaxValue; /* Set the maxumum value for the second pass, too       */
 
                         return (ES_STATE_TRANSITION(stateTestSecondTh));
@@ -1058,8 +1046,8 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
             return (ES_STATE_TRANSITION(stateTestResults));
         }
         case ES_EXIT : {
-            esVTimerCancel(&wspace->refresh);
-            esVTimerCancel(&wspace->timeout);
+            appTimerCancel(&wspace->refresh);
+            appTimerCancel(&wspace->timeout);
 
             return (ES_STATE_HANDLED());
         }
@@ -1075,16 +1063,14 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
     switch (event->id) {
         case ES_ENTRY: {
             wspace->secondTh.isExecuted = true;
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(configGetSecondThTimeout()),
-                timeout,
-                (void *)SECOND_TH_TIMEOUT_);
-            esVTimerStart(
+                SECOND_TH_TIMEOUT_);
+            appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                timeout,
-                (void *)SECOND_TH_REFRESH_);
+                SECOND_TH_REFRESH_);
             motorEnable();
 
             return (ES_STATE_HANDLED());
@@ -1093,11 +1079,10 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
             uint32_t rawValue;
             struct screenTest status;
 
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                timeout,
-                (void *)SECOND_TH_REFRESH_);
+                SECOND_TH_REFRESH_);
             rawValue = getDutRawValue();
             status.title = SCREEN_TEST_2_IN_PROGRESS;
             status.mask  = SCREEN_TEST_EN_FIRST_INFO  | SCREEN_TEST_EN_FIRST_STATUS |
@@ -1122,7 +1107,7 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
                     if (rawVacuum >= configGetFirstThRawVacuum()) {
                         wspace->secondTh.isValid = true;
                         wspace->secondTh.time = configGetSecondThTimeout() -
-                            esVTimerGetRemaining(&wspace->timeout);
+                            appTimerGetRemaining(&wspace->timeout);
 
                         return (ES_STATE_TRANSITION(stateTestResults));
                     }
@@ -1141,8 +1126,8 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
             return (ES_STATE_TRANSITION(stateTestResults));
         }
         case ES_EXIT: {
-            esVTimerCancel(&wspace->refresh);
-            esVTimerCancel(&wspace->timeout);
+            appTimerCancel(&wspace->refresh);
+            appTimerCancel(&wspace->timeout);
             motorDisable();
 
             return (ES_STATE_HANDLED());
@@ -1193,22 +1178,20 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
 
     switch (event->id) {
         case ES_ENTRY : {
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)TEST_RESULTS_NOTIFY_REFRESH_);
-            esVTimerStart(
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                TEST_RESULTS_NOTIFY_REFRESH_);
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(*wspace->notification),
-                timeout,
-                (void *)TEST_RESULTS_NOTIFY_TIMEOUT_);
+                TEST_RESULTS_NOTIFY_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
         case ES_EXIT: {
-            esVTimerCancel(&wspace->refresh);
-            esVTimerCancel(&wspace->timeout);
+            appTimerCancel(&wspace->refresh);
+            appTimerCancel(&wspace->timeout);
 
             return (ES_STATE_HANDLED());
         }
@@ -1217,11 +1200,10 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
 
                 return (ES_STATE_TRANSITION(stateTestResultsSaving));
             } else {
-                esVTimerStart(
+                appTimerStart(
                     &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                    timeout,
-                    (void *)TEST_RESULTS_NOTIFY_REFRESH_);
+                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                    TEST_RESULTS_NOTIFY_REFRESH_);
 
                 return (ES_STATE_HANDLED());
             }
@@ -1232,11 +1214,10 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
             wspace->notification++;
 
             if (*wspace->notification != 0) {
-                esVTimerStart(
+                appTimerStart(
                     &wspace->timeout,
                     ES_VTMR_TIME_TO_TICK_MS(*wspace->notification),
-                    timeout,
-                    (void *)TEST_RESULTS_NOTIFY_TIMEOUT_);
+                    TEST_RESULTS_NOTIFY_TIMEOUT_);
             }
             return (ES_STATE_HANDLED());
         }
@@ -1252,11 +1233,10 @@ static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * e
     switch (event->id) {
         case ES_ENTRY: {
             screenTestSaving();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(1000),
-                timeout,
-                (void *)WAKEUP_TIMEOUT_);
+                WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1273,11 +1253,10 @@ static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * e
 static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)SETTINGS_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_REFRESH_);
             screenSettings();
 
             return (ES_STATE_HANDLED());
@@ -1291,7 +1270,7 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
                 }
                 case 'U' : {
 
-                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    return (ES_STATE_TRANSITION(stateSettingsAuthorize));
                 }
                 case 'B' : {
 
@@ -1301,11 +1280,10 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
                     break;
                 }
             }
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)SETTINGS_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_REFRESH_);
             
             return (ES_STATE_HANDLED());
         }
@@ -1320,11 +1298,10 @@ static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event
     switch (event->id) {
         case ES_ENTRY: {
             screenSettingsAbout();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)SETTINGS_ABOUT_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_ABOUT_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1335,11 +1312,10 @@ static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event
                     return (ES_STATE_TRANSITION(stateSettings));
                 }
             }
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)SETTINGS_ABOUT_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_ABOUT_REFRESH_);
             
             return (ES_STATE_HANDLED());
         }
@@ -1353,11 +1329,58 @@ static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event
 static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
-        case ES_INIT: {
-            return (ES_STATE_TRANSITION(stateSettingsAdmin));
+        case ES_ENTRY : {
+            screenSettingsAuth();
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_AUTH_REFRESH_);
+            wspace->data.settingsAuthorize.numOfCharactes = configPasswordLength();
+            wspace->data.settingsAuthorize.counter        = 0u;
+
+            return (ES_STATE_HANDLED());
+        }
+        case SETTINGS_AUTH_REFRESH_ :{
+            char        key;
+
+            switch (key = getKey()) {
+                case 'B' : {
+                    
+                    return (ES_STATE_TRANSITION(stateSettings));
+                }
+                default : {
+                    if (key != 0) {
+
+                        if (configIsPasswordCharValid(key, wspace->data.settingsAuthorize.counter)) {
+                            wspace->data.settingsAuthorize.counter++;
+                            
+                            if (wspace->data.settingsAuthorize.counter ==
+                                wspace->data.settingsAuthorize.numOfCharactes) {
+                                buzzerMelody(OkNotification);
+
+                                return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                            }
+                        } else {
+                            buzzerMelody(ConfusedNotification);
+
+                            return (ES_STATE_TRANSITION(stateSettings));
+                        }
+                        buzzerTone(20);
+                    }
+                }
+            }
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                SETTINGS_AUTH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
         }
     }
-    return (ES_STATE_IGNORED());
 }
 
 static esAction stateSettingsLcdCalib(struct wspace * wspace, const esEvent * event) {
@@ -1384,11 +1407,10 @@ static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event
     switch (event->id) {
         case ES_ENTRY: {
             screenSettingsAdmin();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)EXPORT_INSERT_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                EXPORT_INSERT_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1403,11 +1425,10 @@ static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event
                     return (ES_STATE_TRANSITION(stateSettingsLcdCalib));
                 }
             }
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)EXPORT_INSERT_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                EXPORT_INSERT_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1441,11 +1462,10 @@ static esAction stateExportInsert(struct wspace * wspace, const esEvent * event)
 
     switch (event->id) {
         case ES_ENTRY: {
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)EXPORT_INSERT_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                EXPORT_INSERT_REFRESH_);
             screenExportInsert();
 
             return (ES_STATE_HANDLED());
@@ -1458,11 +1478,10 @@ static esAction stateExportInsert(struct wspace * wspace, const esEvent * event)
 
                 return (ES_STATE_TRANSITION(stateExportMount));
             } else {
-                esVTimerStart(
+                appTimerStart(
                     &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                    timeout,
-                    (void *)EXPORT_INSERT_REFRESH_);
+                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                    EXPORT_INSERT_REFRESH_);
 
                 return (ES_STATE_HANDLED());
             }
@@ -1509,11 +1528,10 @@ static esAction stateExportChoose(struct wspace * wspace, const esEvent * event)
             wspace->screen.exportChoose.end[EXPORT_YEAR]  = 2014;
             wspace->screen.exportChoose.focus             = 0;
             screenExportChoose(&wspace->screen.exportChoose);
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)EXPORT_CHOOSE_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                EXPORT_CHOOSE_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1565,11 +1583,10 @@ static esAction stateExportChoose(struct wspace * wspace, const esEvent * event)
                 }
             }
             screenExportChoose(&wspace->screen.exportChoose);
-            esVTimerStart(
+            appTimerStart(
                 &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                timeout,
-                (void *)EXPORT_CHOOSE_REFRESH_);
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                EXPORT_CHOOSE_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1585,11 +1602,10 @@ static esAction stateExportSaving(struct wspace * wspace, const esEvent * event)
     switch (event->id) {
         case ES_ENTRY: {
             screenExportSaving();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(2000),
-                timeout,
-                (void *)WAKEUP_TIMEOUT_);
+                WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
