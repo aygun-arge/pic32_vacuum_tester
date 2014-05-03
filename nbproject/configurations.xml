@@ -22,6 +22,7 @@
         <itemPath>application/include/app_time.h</itemPath>
         <itemPath>application/include/logo.h</itemPath>
         <itemPath>application/include/app_storage.h</itemPath>
+        <itemPath>application/include/app_timer.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -36,6 +37,7 @@
         <itemPath>application/source/app_time.c</itemPath>
         <itemPath>application/source/logo.c</itemPath>
         <itemPath>application/source/app_storage.c</itemPath>
+        <itemPath>application/source/app_timer.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -180,6 +182,25 @@
         <itemPath>ft800/source/FT_Gpu_Hal.c</itemPath>
       </logicalFolder>
     </logicalFolder>
+    <logicalFolder name="gobject" displayName="gobject" projectFiles="true">
+      <logicalFolder name="inc" displayName="inc" projectFiles="true">
+        <itemPath>gobject/inc/gobject.h</itemPath>
+        <itemPath>gobject/inc/epa_gobject.h</itemPath>
+        <itemPath>gobject/inc/gbutton.h</itemPath>
+        <itemPath>gobject/inc/ghal.h</itemPath>
+        <itemPath>gobject/inc/gtheme.h</itemPath>
+        <itemPath>gobject/inc/gprimitives.h</itemPath>
+        <itemPath>gobject/inc/gbackground.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="src" displayName="src" projectFiles="true">
+        <itemPath>gobject/src/gobject.c</itemPath>
+        <itemPath>gobject/src/epa_gobject.c</itemPath>
+        <itemPath>gobject/src/ghal_ft800.c</itemPath>
+        <itemPath>gobject/src/gbutton.c</itemPath>
+        <itemPath>gobject/src/gtext.c</itemPath>
+        <itemPath>gobject/src/gbackground.c</itemPath>
+      </logicalFolder>
+    </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
@@ -243,6 +264,7 @@
     <Elem>esolid-vtimer</Elem>
     <Elem>esolid-mem</Elem>
     <Elem>esolid-eds</Elem>
+    <Elem>gobject</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -284,7 +306,7 @@
         <property key="enable-unroll-loops" value="false"/>
         <property key="exclude-floating-point" value="false"/>
         <property key="extra-include-directories"
-                  value="application/include;application/include/config;mla/include;ft800/include;driver/include;esolid-base/inc;esolid-base/port/pic32-none-gcc/common;esolid-base/port/pic32-none-gcc/mips-m4k;esolid-base/port/pic32-none-gcc/pic32mx250f128d;esolid-vtimer/inc;esolid-mem/inc;esolid-eds/inc"/>
+                  value="application/include;application/include/config;mla/include;ft800/include;driver/include;esolid-base/inc;esolid-base/port/pic32-none-gcc/common;esolid-base/port/pic32-none-gcc/mips-m4k;esolid-base/port/pic32-none-gcc/pic32mx250f128d;esolid-vtimer/inc;esolid-mem/inc;esolid-eds/inc;gobject/inc"/>
         <property key="generate-16-bit-code" value="true"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="true"/>
@@ -401,7 +423,6 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

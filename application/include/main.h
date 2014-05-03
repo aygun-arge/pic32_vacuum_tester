@@ -24,7 +24,7 @@ extern "C" {
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 extern esMem            StaticMem;
-extern esMem            HeapMem;
+extern esMem            EventHeapMem;
 
 /*===================================================  FUNCTION PROTOTYPES  ==*/
 /*--------------------------------------------------------  C++ extern end  --*/

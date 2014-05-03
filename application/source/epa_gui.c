@@ -17,11 +17,15 @@
 #include "app_psensor.h"
 #include "app_battery.h"
 #include "app_usb.h"
+#include "main.h"
 
 #include "logo.h"
 #include "app_buzzer.h"
+#include "gobject.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
+
+#define CONFIG_GOBJECT_HEAP_SIZE        4096
 
 #define CONFIG_PRE_TEST_MS              500
 #define CONFIG_TEST_CANCEL_MS           5000
@@ -233,10 +237,10 @@ static const ES_MODULE_INFO_CREATE("GUI", CONFIG_EPA_GUI_NAME, "Nenad Radulovic"
 
 static const esSmTable      GuiTable[] = ES_STATE_TABLE_INIT(GUI_TABLE);
 
-static const uint8_t StartNotification[] = {20, 100, 20, 0};
-static const uint8_t FailNotification[] = {150, 150, 175, 175, 200, 0};
-static const uint8_t ConfusedNotification[] = {20, 100, 20, 100, 40, 100, 40, 100, 60, 0};
-static const uint8_t SuccessNotification[] = {40, 100, 40, 100, 40, 0};
+static const uint8_t        StartNotification[] = {20, 100, 20, 0};
+static const uint8_t        FailNotification[] = {150, 150, 175, 175, 200, 0};
+static const uint8_t        ConfusedNotification[] = {20, 100, 20, 100, 40, 100, 40, 100, 60, 0};
+static const uint8_t        SuccessNotification[] = {40, 100, 40, 100, 40, 0};
 
 static Ft_Gpu_Hal_Context_t Gpu;
 
@@ -806,10 +810,20 @@ static void screenSettingsAuth(void) {
 static esAction stateInit(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_INIT: {
+            static esMem gObjectHeapMem = ES_MEM_INITIALIZER();                 /* STATIC: exists during execution                          */
+            void *      buffer;
+
             wspace->retry = 10u;
             esVTimerInit(&wspace->timeout);
             esVTimerInit(&wspace->refresh);
-            gpuInitEarly();
+            esMemAlloc(&StaticMem, CONFIG_GOBJECT_HEAP_SIZE, &buffer);          /* Allocate memory for gObject heap manager                 */
+            esMemInit(
+                &esGlobalHeapMemClass,
+                &gObjectHeapMem,
+                buffer,
+                CONFIG_GOBJECT_HEAP_SIZE,
+                0);                                                             /* Set-up heap memory                                       */
+            initGobjectModule(&gObjectHeapMem, Gui);
 
             return (ES_STATE_TRANSITION(stateWakeUpLcd));
         }
@@ -825,10 +839,10 @@ static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
         case ES_INIT : {
             ft_uint8_t chipid;
 
-            chipid = Ft_Gpu_Hal_Rd8(&Gpu, REG_ID);
+            //chipid = Ft_Gpu_Hal_Rd8(&Gpu, REG_ID);
 
             if (chipid == 0x7C) {
-                gpuInitLate();
+                //gpuInitLate();
 
                 return (ES_STATE_TRANSITION(stateWelcome));
             } else if (wspace->retry != 0u) {
@@ -865,7 +879,7 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             screenWelcome();
-            fadeIn();
+            //fadeIn();
             esVTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TIME_WELCOME),

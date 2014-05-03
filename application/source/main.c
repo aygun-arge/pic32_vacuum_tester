@@ -30,9 +30,14 @@
 #include "mem/mem_class.h"
 #include "eds/epa.h"
 
-#include "epa_gui.h"
+#include "events.h"
+
+#include "gobject.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
+
+#define CONFIG_EVENT_HEAP_SIZE          4096
+
 /*======================================================  LOCAL DATA TYPES  ==*/
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
 
@@ -46,8 +51,9 @@ static uint8_t          StaticMemBuff[16384];
 
 /*======================================================  GLOBAL VARIABLES  ==*/
 
-esMem                   StaticMem = ES_MEM_INITIALIZER();
-esMem                   HeapMem   = ES_MEM_INITIALIZER();
+esMem                   StaticMem      = ES_MEM_INITIALIZER();
+esMem                   EventHeapMem   = ES_MEM_INITIALIZER();
+
 
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
@@ -59,7 +65,7 @@ static void nativeFsm(void) {
 /*====================================  GLOBAL PUBLIC FUNCTION DEFINITIONS  ==*/
 
 int main(void) {
-    void *              heapBuff;
+    void *              heap;
     
     /*--  Initialize drivers  ------------------------------------------------*/
     initClockDriver();
@@ -89,25 +95,26 @@ int main(void) {
         StaticMemBuff,
         sizeof(StaticMemBuff),
         0);                                                                     /* Set-up static memory                                     */
-    esMemAlloc(&StaticMem, 8192, &heapBuff);                                    /* Allocate memory for heap manager                         */
+    esMemAlloc(&StaticMem, CONFIG_EVENT_HEAP_SIZE, &heap);                      /* Allocate memory for event heap manager                   */
     esMemInit(
         &esGlobalHeapMemClass,
-        &HeapMem,
-        heapBuff,
-        4096,
+        &EventHeapMem,
+        heap,
+        CONFIG_EVENT_HEAP_SIZE,
         0);                                                                     /* Set-up heap memory                                       */
-
+    
     /*--  Initialize virtual timers  -----------------------------------------*/
     esModuleVTimerInit();
 
     /*--  Register a memory to use for events  -------------------------------*/
-    esEventRegisterMem(&HeapMem);
+    esEventRegisterMem(&EventHeapMem);
 
     /*--  Initialize EDS kernel  ---------------------------------------------*/
     esEdsInit();
 
     /*--  Create EPAs  -------------------------------------------------------*/
-    esEpaCreate(&GuiEpa, &GuiSm, &StaticMem, &Gui);
+    esEpaCreate(&GuiEpa,     &GuiSm,     &StaticMem, &Gui);
+//    esEpaCreate(&GobjectEpa, &GobjectSm, &StaticMem, &Gobject);
     
     /*--  Set application idle routine  --------------------------------------*/
     esEdsSetIdle(nativeFsm);
@@ -117,7 +124,7 @@ int main(void) {
 
     /*--  In case we abort or terminate clean up everything  -----------------*/
     esEdsTerm();
-    esMemTerm(&HeapMem);
+    esMemTerm(&EventHeapMem);
 
     return (0);
 }
