@@ -22,6 +22,7 @@
         <itemPath>application/include/app_time.h</itemPath>
         <itemPath>application/include/logo.h</itemPath>
         <itemPath>application/include/app_storage.h</itemPath>
+        <itemPath>application/include/app_timer.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -36,6 +37,7 @@
         <itemPath>application/source/app_time.c</itemPath>
         <itemPath>application/source/logo.c</itemPath>
         <itemPath>application/source/app_storage.c</itemPath>
+        <itemPath>application/source/app_timer.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -52,6 +54,8 @@
           <itemPath>driver/include/driver/s25fl.h</itemPath>
           <itemPath>driver/include/driver/rtc.h</itemPath>
           <itemPath>driver/include/driver/systick.h</itemPath>
+          <itemPath>driver/include/driver/i2c.h</itemPath>
+          <itemPath>driver/include/driver/lld_i2c1.h</itemPath>
         </logicalFolder>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
@@ -67,6 +71,7 @@
         <itemPath>driver/source/i2c.c</itemPath>
         <itemPath>driver/source/rtc.c</itemPath>
         <itemPath>driver/source/systick.c</itemPath>
+        <itemPath>driver/source/lld_i2c1.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="esolid-base" displayName="esolid-base" projectFiles="true">
