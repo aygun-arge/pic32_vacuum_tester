@@ -71,7 +71,8 @@ extern "C" {
 #define TEXT_COLOR_TABLE(entry)                                                 \
     entry(GO_COLOR_LRED,    COLOR_LRED)                                         \
     entry(GO_COLOR_LGREEN,  COLOR_LGREEN)                                       \
-    entry(GO_COLOR_LBLUE,   COLOR_LBLUE)    
+    entry(GO_COLOR_LBLUE,   COLOR_LBLUE)                                        \
+    entry(GO_COLOR_LBLUE,   COLOR_LBLUE)                                        \
 
 
 #ifdef	__cplusplus

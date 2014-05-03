@@ -17,11 +17,13 @@
 #include "app_psensor.h"
 #include "app_battery.h"
 #include "app_usb.h"
+#include "app_timer.h"
 #include "main.h"
 
 #include "logo.h"
 #include "app_buzzer.h"
 #include "gobject.h"
+#include "gtheme.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -35,26 +37,6 @@
 #define CONFIG_MAIN_REFRESH_MS          20
 
 #define DEF_VACUUM_UNIT                 "mmHg"
-
-/**@name        Display coefficients
- */
-#define DISP_WIDTH                      320
-#define DISP_HEIGHT                     240
-#define DISP_H_CYCLE                    408
-#define DISP_H_OFFSET                   70
-#define DISP_H_SYNC0                    0
-#define DISP_H_SYNC1                    10
-#define DISP_V_CYCLE                    263
-#define DISP_V_OFFSET                   13
-#define DISP_V_SYNC0                    0
-#define DISP_V_SYNC1                    2
-#define DISP_PCLK                       8
-#define DISP_SWIZZLE                    2
-#define DISP_PCLK_POL                   0
-
-/*--  Normal fonts  ----------------------------------------------------------*/
-#define DEF_N1_FONT_SIZE                27
-#define DEF_N2_FONT_SIZE                29
 
 /*--  Big fonts  -------------------------------------------------------------*/
 #define DEF_B1_FONT_SIZE                30
@@ -87,7 +69,7 @@
 
 #define GUI_TABLE(entry)                                                        \
     entry(stateInit,                TOP)                                        \
-    entry(stateWakeUpLcd,           TOP)                                        \
+    entry(stateWaitGO,              TOP)                                        \
     entry(stateMain,                TOP)                                        \
     entry(statePreTest,             TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
@@ -105,6 +87,12 @@
     entry(stateExportChoose,        TOP)                                        \
     entry(stateExportSaving,        TOP)                                        \
     entry(stateWelcome,             TOP)
+
+/*--      Type,             x,      y,      hAlign,             vAlign,             size,   color, property */
+#define WELCOME(entry)                                                                                  \
+    entry(GO_BACKGROUND,    0,      0,      0,                  0,                  0,      GO_COLOR_WHITE,     NULL)   \
+    entry(GO_TEXT,          20,     20,     GO_H_ALIGN_CENTER,  GO_V_ALIGN_CENTER,  0,      GO_COLOR_WHITE,     NULL)   \
+
 
 /*======================================================  LOCAL DATA TYPES  ==*/
 
@@ -185,8 +173,8 @@ struct screenExportChoose {
 };
 
 struct wspace {
-    struct esVTimer     timeout;
-    struct esVTimer     refresh;
+    struct appTimer     timeout;
+    struct appTimer     refresh;
     uint32_t            retry;
     uint32_t            rawIdleVacuum;
     struct testStatus   firstTh;
@@ -212,7 +200,7 @@ static void screenExportInsert(void);
 static void screenSettings(void);
 
 static esAction stateInit               (struct wspace *, const esEvent *);
-static esAction stateWakeUpLcd          (struct wspace *, const esEvent *);
+static esAction stateWaitGO             (struct wspace *, const esEvent *);
 static esAction stateWelcome            (struct wspace *, const esEvent *);
 static esAction stateMain               (struct wspace *, const esEvent *);
 static esAction statePreTest            (struct wspace *, const esEvent *);
@@ -246,6 +234,10 @@ static Ft_Gpu_Hal_Context_t Gpu;
 
 static struct spiHandle     GpuSpi;
 
+static const struct gObjectDescriptor WelcomePage[] = {
+    WELCOME(EXPAND_PAGE_TABLE)
+};
+
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 const struct esEpaDefine GuiEpa = ES_EPA_DEFINE(
@@ -262,548 +254,6 @@ struct esEpa *           Gui;
 
 /*--  SUPPORT  ---------------------------------------------------------------*/
 
-static void gpuInitEarly(void) {
-    /* Values specific to QVGA LCD display */
-    Ft_Gpu_HalInit_t halinit;                       /* Not used in this port */
-
-    Gpu.hal_handle = &GpuSpi;
-    Ft_Gpu_Hal_Init(&halinit);
-    Ft_Gpu_Hal_Open(&Gpu);
-
-    /* Do a power cycle for safer side */
-    Ft_Gpu_Hal_Powercycle(&Gpu, FT_TRUE);
-    //Ft_Gpu_Hal_Rd16(&Gpu, RAM_G);
-
-    /* Access address 0 to wake up the FT800 */
-    Ft_Gpu_HostCommand(&Gpu, FT_GPU_ACTIVE_M);
-    Ft_Gpu_Hal_Sleep(40);
-
-    /* Set the clk to external clock */
-    Ft_Gpu_HostCommand(&Gpu, FT_GPU_EXTERNAL_OSC);
-    Ft_Gpu_Hal_Sleep(20);
-
-    /* Switch PLL output to 48MHz */
-    Ft_Gpu_HostCommand(&Gpu, FT_GPU_PLL_48M);
-    Ft_Gpu_Hal_Sleep(20);
-
-    /* Do a core reset for safer side */
-    Ft_Gpu_HostCommand(&Gpu, FT_GPU_CORE_RESET);
-}
-
-static void gpuInitLate(void) {
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_HCYCLE,   DISP_H_CYCLE);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_HOFFSET,  DISP_H_OFFSET);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_HSYNC0,   DISP_H_SYNC0);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_HSYNC1,   DISP_H_SYNC1);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_VCYCLE,   DISP_V_CYCLE);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_VOFFSET,  DISP_V_OFFSET);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_VSYNC0,   DISP_V_SYNC0);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_VSYNC1,   DISP_V_SYNC1);
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_SWIZZLE,  DISP_SWIZZLE);
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PCLK_POL, DISP_PCLK_POL);
-
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_HSIZE,    DISP_WIDTH);
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_VSIZE,    DISP_HEIGHT);
-
-    /* Touch configuration - configure the resistance value to 1200 - this value 
-     * is specific to customer requirement and derived by experiment.
-     */
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_TOUCH_RZTHRESH, 1200);
-    Ft_Gpu_Hal_Wr32(&Gpu, RAM_DL + 0,   CLEAR_COLOR_RGB(0, 0, 0));              /* Set the background to black                              */
-    Ft_Gpu_Hal_Wr32(&Gpu, RAM_DL + 4,   CLEAR(1,1,1));
-    Ft_Gpu_Hal_Wr32(&Gpu, RAM_DL + 8,   DISPLAY());
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_DLSWAP,   DLSWAP_FRAME);
-
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO_DIR, 0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO_DIR));
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PCLK,     DISP_PCLK);                             /* After this display is visible on the LCD                 */
-}
-
-static void timeout(void * arg) {
-    struct esEvent *    timeout;
-    esError             error;
-
-    ES_ENSURE(error = esEventCreate(
-        sizeof(struct esEvent),
-        (uint32_t)arg,
-        &timeout));
-
-    if (error == ES_ERROR_NONE) {
-        esEpaSendAheadEvent(Gui, timeout);
-    }
-}
-
-static uint8_t getKey(void) {
-    static uint16_t oldState;
-    uint16_t        newState;
-    uint16_t        retval;
-
-    newState = Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG);
-
-    if ((oldState != 0) && (newState == 0)) {
-        retval = oldState;
-    } else {
-        retval = 0;
-    }
-    oldState = newState;
-
-    return (retval);
-}
-
-static void fadeIn(void) {
-    uint32_t    pwm;
-
-    for (pwm = 0; pwm <=128 ; pwm++) {
-        Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, pwm);
-        Ft_Gpu_Hal_Sleep(4);//sleep for 2 ms
-    }
-}
-
-static void fadeOut(void) {
-    uint32_t    pwm;
-
-    for (pwm = 128; pwm >= 0 ; pwm--) {
-        Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, pwm);
-        Ft_Gpu_Hal_Sleep(2);//sleep for 2 ms
-    }
-}
-
-static void fadeOff(void) {
-    Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, 128);
-}
-
-static void constructBackground(void) {
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-    Ft_Gpu_CoCmd_Gradient(&Gpu, 0,0, 0x707070, 0, DISP_HEIGHT, 0xe0e0e0);
-}
-
-static void constructTitle(const char * title) {
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, title);
-}
-
-static void constructButtonBack(enum buttonBackPos position) {
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(12, 128, 48));
-
-    switch (position) {
-        case DOWN_LEFT: {
-            Ft_Gpu_CoCmd_Button(&Gpu, 20, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
-            break;
-        }
-        default : {
-            Ft_Gpu_CoCmd_Button(&Gpu, 98, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Back");
-        }
-    }
-    Ft_Gpu_CoCmd_ColdStart(&Gpu);
-}
-
-static void screenWelcome(void) {
-    char        buffer[100];
-
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, WELCOME_GREETING);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
-    strcpy(buffer, BUILD_DATE);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
-    strcpy(buffer, BUILD_TIME);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 180, DEF_N1_FONT_SIZE, OPT_CENTER, buffer);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 220, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenSettingsAbout(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    constructTitle("About");
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
-    constructButtonBack(DOWN_MIDDLE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenCalibrate(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
-    Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,"Please tap on the dot");
-    Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
-    Ft_Gpu_Hal_WrCmd32(&Gpu,DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenMain(struct screenMain * status) {
-    char *              text;
-
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  20, 130,  40, DEF_N1_FONT_SIZE, 0, "Settings");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 20, 130,  40, DEF_N1_FONT_SIZE, 0, "Export");
-
-    if (status->isDutDetected) {
-        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('T'));
-        Ft_Gpu_CoCmd_Button(&Gpu, 80,  80, 160, 80, DEF_B1_FONT_SIZE, 0, "TEST");
-        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-        text = "Porator is detected";
-    } else {
-        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('t'));
-        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
-        Ft_Gpu_CoCmd_Button(&Gpu, 80,  80, 160, 80, DEF_B1_FONT_SIZE, 0, "TEST");
-        Ft_Gpu_CoCmd_ColdStart(&Gpu);
-        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 0, 0));
-        text = "Put the porator on the test pad.";
-    }
-    Ft_Gpu_CoCmd_Text(&Gpu, 160, 185, DEF_N1_FONT_SIZE, OPT_CENTER, text);
-    Ft_Gpu_Hal_WrCmd32(&Gpu,          COLOR_RGB(0, 0, 0));
-    Ft_Gpu_CoCmd_Text(&Gpu, 140, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, status->date);
-    Ft_Gpu_CoCmd_Text(&Gpu, 260, 225, DEF_N1_FONT_SIZE, OPT_CENTERY, status->time);
-    Ft_Gpu_CoCmd_Text(&Gpu, 10,  225, DEF_N1_FONT_SIZE, OPT_CENTERY, "BAT:");
-    Ft_Gpu_CoCmd_Text(&Gpu, 50, 225,  DEF_N1_FONT_SIZE, OPT_CENTERY, status->battery);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, BEGIN(3));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, VERTEX2II(10,  210, 0, 64));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, VERTEX2II(310, 210, 0, 64));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, END());
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static enum testResult evaluateTest(struct wspace * wspace) {
-     if (wspace->firstTh.isValid && wspace->secondTh.isValid) {
-
-         return (TEST_SUCCESS);
-    } else if (wspace->firstTh.isCancelled || wspace->secondTh.isCancelled) {
-
-        return (TEST_CANCELLED);
-    } else {
-
-        return (TEST_FAILURE);
-    }
-}
-
-static void screenTestToggleBackground(struct wspace * wspace) {
-    if (wspace->screen.test.isBackgroundEnabled == true) {
-        wspace->screen.test.isBackgroundEnabled = false;
-    } else {
-        wspace->screen.test.isBackgroundEnabled = true;
-    }
-}
-
-static void screenTestPrepare(struct wspace * wspace) {
-
-    switch (evaluateTest(wspace)) {
-        case TEST_SUCCESS : {
-            wspace->screen.test.title = SCREEN_TEST_SUCCESS;
-
-            break;
-        }
-        case TEST_CANCELLED : {
-            wspace->screen.test.title = SCREEN_TEST_CANCELLED;
-
-            break;
-        }
-        default : {
-            wspace->screen.test.title = SCREEN_TEST_FAILED;
-        }
-    }
-
-    if (wspace->firstTh.isValid) {
-        strcpy(wspace->screen.test.firstThStatus, "PASSED");
-    } else if (wspace->firstTh.isCancelled) {
-        strcpy(wspace->screen.test.firstThStatus, "CANCELLED");
-    } else if (wspace->firstTh.isExecuted == false) {
-        strcpy(wspace->screen.test.firstThStatus, "SKIPPED");
-    } else {
-        strcpy(wspace->screen.test.firstThStatus, "FAILED");
-    }
-
-    if (wspace->secondTh.isValid) {
-        strcpy(wspace->screen.test.secondThStatus, "PASSED");
-    } else if (wspace->secondTh.isCancelled) {
-        strcpy(wspace->screen.test.secondThStatus, "CANCELLED");
-    } else if (wspace->secondTh.isExecuted == false) {
-        strcpy(wspace->screen.test.secondThStatus, "SKIPPED");
-    } else {
-        strcpy(wspace->screen.test.secondThStatus, "FAILED");
-    }
-    wspace->screen.test.mask =
-        SCREEN_TEST_EN_FIRST_INFO  | SCREEN_TEST_EN_FIRST_STATUS  |
-        SCREEN_TEST_EN_SECOND_INFO | SCREEN_TEST_EN_SECOND_STATUS |
-        SCREEN_TEST_EN_BUTTON;
-    wspace->screen.test.firstThVal  = wspace->firstTh.rawMaxValue;
-    wspace->screen.test.secondThVal = wspace->secondTh.rawMaxValue;
-    wspace->screen.test.isBackgroundEnabled = true;
-    strcpy(wspace->screen.test.button, "Continue");
-}
-
-static void screenTestDump(struct screenTest * status) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-
-    switch (status->title) {
-        case SCREEN_TEST_PREPARING     :
-        case SCREEN_TEST_1_IN_PROGRESS :
-        case SCREEN_TEST_2_IN_PROGRESS : {
-            constructBackground();
-            constructTitle("Test in progress");
-            break;
-        }
-        case SCREEN_TEST_FAILED : {
-            if (status->isBackgroundEnabled) {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 16, 16));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-            } else {
-                constructBackground();
-            }
-            constructTitle("Test failed");
-            break;
-        }
-        case SCREEN_TEST_CANCELLED: {
-            if (status->isBackgroundEnabled) {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 16));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
-            } else {
-                constructBackground();
-            }
-            constructTitle("Test cancelled");
-            break;
-        }
-        case SCREEN_TEST_SUCCESS: {
-            if (status->isBackgroundEnabled) {
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(16, 224, 16));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-                Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 1, 1));
-            } else {
-                constructBackground();
-            }
-            constructTitle("Test success");
-            break;
-        }
-    }
-
-    if (status->mask & SCREEN_TEST_EN_FIRST_INFO) {
-        Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
-        Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-        Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, status->firstThVal);
-    }
-    
-    if (status->mask & SCREEN_TEST_EN_FIRST_STATUS) {
-        Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, status->firstThStatus);
-    } else if (status->mask & SCREEN_TEST_EN_FIRST_PROGRESS) {
-        Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0, status->firstThVal, status->firstThProgress);
-    }
-    
-    if (status->mask & SCREEN_TEST_EN_SECOND_INFO) {
-        Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "Second threshold");
-        Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-        Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, status->secondThVal);
-    }
-
-    if (status->mask & SCREEN_TEST_EN_SECOND_STATUS) {
-        Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_2_5, DEF_N1_FONT_SIZE, OPT_CENTER, status->secondThStatus);
-    } else if (status->mask & SCREEN_TEST_EN_SECOND_PROGRESS) {
-        Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_2_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0, status->secondThVal, status->secondThProgress);
-    }
-
-    if (status->mask & SCREEN_TEST_EN_BUTTON) {
-        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-        Ft_Gpu_CoCmd_Button(&Gpu, 95, 180, 130, 40, DEF_N1_FONT_SIZE, 0, status->button);
-    }
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenTestSaving(void) {
-    static uint32_t record = 12;
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    constructTitle("Saving...");
-    Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Record number:");
-    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTER, record++);
-    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenExportInsert(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    constructTitle("Export");
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, DEF_N1_FONT_SIZE, OPT_CENTER, "Please insert USB flash drive");
-    constructButtonBack(DOWN_MIDDLE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenExportMount(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    constructTitle("Export");
-    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenExportSaving(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Saving data...");
-    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-#define EXPORT_MONTH                    0
-#define EXPORT_DAY                      1
-#define EXPORT_YEAR                     2
-
-static void screenExportChoose(struct screenExportChoose * status) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Export");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
-    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    constructButtonBack(DOWN_LEFT);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Export");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-
-    if (status->focus == 0) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_MONTH]);
-    }
-
-    if (status->focus == 1) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_DAY]);
-    }
-
-    if (status->focus == 2) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N2_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N1_FONT_SIZE, OPT_CENTER, status->begin[EXPORT_YEAR]);
-    }
-    Ft_Gpu_CoCmd_Text(&Gpu, 125,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-    Ft_Gpu_CoCmd_Text(&Gpu, 175,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-
-    if (status->focus == 3) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_MONTH]);
-    }
-
-    if (status->focus == 4) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_DAY]);
-    }
-
-    if (status->focus == 5) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N2_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
-    } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N1_FONT_SIZE, OPT_CENTER, status->end[EXPORT_YEAR]);
-    }
-    Ft_Gpu_CoCmd_Text(&Gpu, 125,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-    Ft_Gpu_CoCmd_Text(&Gpu, 175,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenSettings(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Settings");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('A'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "About");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
-    constructButtonBack(DOWN_MIDDLE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenSettingsAdmin(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Administration");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "Sensor Calib.");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('L'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "LCD Calib.");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('P'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Password");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('G'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 120, 130, 40, DEF_N1_FONT_SIZE, 0, "Parameters");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Clock");
-    constructButtonBack(DOWN_LEFT);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
-
-static void screenSettingsAuth(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
-    constructBackground();
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, "Enter password");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
-    Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
-    Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
-    constructButtonBack(DOWN_MIDDLE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
-}
 
 /*--  End of SUPPORT  --------------------------------------------------------*/
 
@@ -814,8 +264,8 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
             void *      buffer;
 
             wspace->retry = 10u;
-            esVTimerInit(&wspace->timeout);
-            esVTimerInit(&wspace->refresh);
+            appTimerInit(&wspace->timeout);
+            appTimerInit(&wspace->refresh);
             esMemAlloc(&StaticMem, CONFIG_GOBJECT_HEAP_SIZE, &buffer);          /* Allocate memory for gObject heap manager                 */
             esMemInit(
                 &esGlobalHeapMemClass,
@@ -825,48 +275,11 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
                 0);                                                             /* Set-up heap memory                                       */
             initGobjectModule(&gObjectHeapMem, Gui);
 
-            return (ES_STATE_TRANSITION(stateWakeUpLcd));
+            return (ES_STATE_TRANSITION(stateWelcome));
         }
-        default: {
+        case GO_READY : {
 
-            return (ES_STATE_IGNORED());
-        }
-    }
-}
-
-static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
-    switch (event->id) {
-        case ES_INIT : {
-            ft_uint8_t chipid;
-
-            //chipid = Ft_Gpu_Hal_Rd8(&Gpu, REG_ID);
-
-            if (chipid == 0x7C) {
-                //gpuInitLate();
-
-                return (ES_STATE_TRANSITION(stateWelcome));
-            } else if (wspace->retry != 0u) {
-                wspace->retry--;
-                esVTimerStart(
-                    &wspace->timeout,
-                    ES_VTMR_TIME_TO_TICK_MS(100),
-                    timeout,
-                    (void *)WAKEUP_TIMEOUT_);
-
-                return (ES_STATE_HANDLED());
-            } else {
-
-                return (ES_STATE_TRANSITION(stateInit));
-            }
-        }
-        case WAKEUP_TIMEOUT_: {
-
-            return (ES_STATE_TRANSITION(stateWakeUpLcd));
-        }
-        case ES_EXIT: {
-            esVTimerCancel(&wspace->timeout);
-
-            return (ES_STATE_HANDLED());
+            return (ES_STATE_TRANSITION(stateWelcome));
         }
         default: {
 
@@ -878,18 +291,14 @@ static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
 static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
-            screenWelcome();
-            //fadeIn();
-            esVTimerStart(
+            appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_TIME_WELCOME),
-                timeout,
-                (void *)WELCOME_WAIT_);
+                WELCOME_WAIT_);
 
             return (ES_STATE_HANDLED());
         }
         case WELCOME_WAIT_: {
-            screenCalibrate();
             
             return (ES_STATE_TRANSITION(stateMain));
         }

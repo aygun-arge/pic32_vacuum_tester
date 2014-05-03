@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define EXPAND_PAGE_TABLE(type, x, y, hAlign, vAlign, size, color, property)    \
-    {type, x, y, hAlign, vAlign, size, color, property, sizeof(*property)},
+    {type, x, y, hAlign, vAlign, size, color, &property, sizeof(property)},
 
 struct gObjectDescriptor {
     enum gThemeTypes   type;

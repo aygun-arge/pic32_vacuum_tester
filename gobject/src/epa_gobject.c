@@ -168,6 +168,9 @@ static esAction stateTouchEnabled(struct wspace * wspace, const esEvent * event)
         }
         case EVT_TOUCH_POLL : {
             struct gHalPage * halPage;
+            esError             error;
+            struct gEvent *     notify;
+            uint16_t            objectId;
 
             appTimerStart(
                 &wspace->refresh,
@@ -175,38 +178,42 @@ static esAction stateTouchEnabled(struct wspace * wspace, const esEvent * event)
                 EVT_TOUCH_POLL);
             halPage = gPageGetHalPage();
 
-            if (halPage != NULL) {
-                esError             error;
-                struct gEvent *     notify;
-                uint16_t            objectId;
+            if (halPage == NULL) {
 
-                objectId = gHalGetHotSpot(halPage);
+                return (ES_STATE_HANDLED());
+            }
+            objectId = gHalGetHotSpot(halPage);
 
-                if (gHalIsPressed(halPage)) {
-                    ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_PRESSED, (esEvent **)&notify));
-                    
-                    if (error == ES_ERROR_NONE) {
-                        notify->objectId = objectId;
-                        ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
-                    }
+            if (objectId == 0) {
+
+                return (ES_STATE_HANDLED());
+            }
+            /* NOTE: This is still not used (WORK IN PROGRESS) */
+#if 0
+            if (gHalIsPressed(halPage)) {
+                ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_PRESSED, (esEvent **)&notify));
+
+                if (error == ES_ERROR_NONE) {
+                    notify->objectId = objectId;
+                    ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
                 }
+            }
 
-                if (gHalIsReleased(halPage)) {
-                    ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_RELEASED, (esEvent **)&notify));
+            if (gHalIsReleased(halPage)) {
+                ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_RELEASED, (esEvent **)&notify));
 
-                    if (error == ES_ERROR_NONE) {
-                        notify->objectId = objectId;
-                        ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
-                    }
+                if (error == ES_ERROR_NONE) {
+                    notify->objectId = objectId;
+                    ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
                 }
+            }
+#endif
+            if (gHalIsClicked(halPage)) {
+                ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_CLICKED, (esEvent **)&notify));
 
-                if (gHalIsClicked(halPage)) {
-                    ES_ENSURE(error = esEventCreate(sizeof(*notify), GO_CLICKED, (esEvent **)&notify));
-
-                    if (error == ES_ERROR_NONE) {
-                        notify->objectId = objectId;
-                        ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
-                    }
+                if (error == ES_ERROR_NONE) {
+                    notify->objectId = objectId;
+                    ES_ENSURE(esEpaSendEvent(gObjectModuleHandler(), (esEvent *)notify));
                 }
             }
 

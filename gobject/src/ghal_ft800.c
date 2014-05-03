@@ -8,6 +8,7 @@
 #include "driver/spi.h"
 #include "gobject.h"
 #include "app_timer.h"
+#include "Compiler.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -43,6 +44,9 @@ struct gHalPage {
 static Ft_Gpu_Hal_Context_t Gpu;
 static struct spiHandle     GpuSpi;
 static struct gHalPage      GpuPage;
+static bool                 IsPressed;
+static bool                 IsReleased;
+static bool                 IsClicked;
 
 /*======================================================  GLOBAL VARIABLES  ==*/
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
@@ -176,19 +180,66 @@ void gHalSetHotspot(struct gHalPage * halPage, const struct gGeometry * geometry
 }
 
 uint16_t gHalGetHotSpot(struct gHalPage * halPage) {
-    
+    enum touchState {
+        T_NOT_TOUCHED,
+        T_TOUCHED
+    };
+    static enum touchState state = T_NOT_TOUCHED;
+    static uint16_t     oldTouch;
+    uint16_t            newTouch;
+
+    (void)halPage;
+    newTouch = Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG);
+
+    switch (state) {
+        case T_NOT_TOUCHED : {
+            IsPressed  = false;
+            IsReleased = false;
+            IsClicked  = false;
+
+            if (newTouch != 0) {
+                oldTouch  = newTouch;
+                IsPressed = true;
+
+                state = T_TOUCHED;
+            }
+            break;
+        }
+        case T_TOUCHED : {
+            IsPressed = false;
+
+            if (newTouch == 0) {
+                IsReleased = true;
+                IsClicked  = true;
+
+                state = T_NOT_TOUCHED;
+            } else if (oldTouch != newTouch) {
+                oldTouch = newTouch;
+            }
+
+            break;
+        }
+    }
+
+    return (oldTouch);
 }
 
 bool gHalIsPressed(struct gHalPage * halPage) {
+    (void)halPage;
 
+    return (IsPressed);
 }
 
 bool gHalIsReleased(struct gHalPage * halPage) {
+    (void)halPage;
 
+    return (IsReleased);
 }
 
 bool gHalIsClicked(struct gHalPage * halPage) {
-    
+    (void)halPage;
+
+    return (IsClicked);
 }
 
 void gHalButton(struct gHalPage *     halPage, const struct gGeometry * geometry, const struct gColor * color, const char * label, uint16_t font) {

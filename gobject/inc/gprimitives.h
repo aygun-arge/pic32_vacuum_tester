@@ -42,7 +42,8 @@ enum gThemeColors {
     GO_COLOR_DBLUE,
     GO_COLOR_DORANGE,
     GO_COLOR_DVIOLET,
-    GO_COLOR_WHITE
+    GO_COLOR_WHITE,
+    GO_COLOR_BLACK
 };
 
 enum gHAlignments {
