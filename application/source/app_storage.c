@@ -7,7 +7,7 @@
 #include "base/base.h"
 
 #define CONFIG_MAX_STORAGE_ENTRIES      16
-#define CONFIG_ALLOCATION_TABLE_ADDRESS 0
+#define CONFIG_ALLOCATION_TABLE_ADDRESS 0x0
 #define CONFIG_SPACE_NAME_SIZE          16
 
 #define STORAGE_SIGNATURE               0xdeadbeefu
@@ -34,14 +34,6 @@ struct allocationTable {
 static ES_MODULE_INFO_CREATE("app_storage", "Application Storage", "Nenad Radulovic");
 
 static struct allocationTable AllocationTable;
-
-static void initStorageSpace(struct storageSpace * space) {
-    space->id  = (uint32_t)-1;
-    space->head = (uint32_t)-1;
-    space->tail = (uint32_t)-1;
-    space->phy.base = 0u;
-    space->phy.size = 0u;
-}
 
 static enum flashError saveAllocationTable(struct allocationTable * table) {
     enum flashError error;
@@ -81,6 +73,24 @@ static enum flashError loadAllocationTable(struct allocationTable * table) {
     return (error);
 }
 
+static void initAllocationTable(struct allocationTable * table) {
+    uint32_t            id;
+
+    table->signature = STORAGE_SIGNATURE;
+    table->entries   = 0u;
+
+    for (id = 0u; id < CONFIG_MAX_STORAGE_ENTRIES; id++) {
+        memset(table->space[id].name, 0, sizeof(table->space[0].name));
+        table->space[id].id   = (uint32_t)-1;
+        table->space[id].pos  = 0u;
+        table->space[id].head = (uint32_t)-1;
+        table->space[id].tail = (uint32_t)-1;
+        table->space[id].size = 0u;
+        table->space[id].phy.base = 0u;
+        table->space[id].phy.size = 0u;
+    }
+}
+
 void initStorage(void) {
 
     if (loadAllocationTable(&AllocationTable) != FLASH_ERROR_NONE) {
@@ -89,16 +99,12 @@ void initStorage(void) {
     }
 
     if (AllocationTable.signature != STORAGE_SIGNATURE) {
-        uint32_t        id;
 
         if (flashEraseAll() != FLASH_ERROR_NONE) {
 
             return;
         }
-        for (id = 0u; id < CONFIG_MAX_STORAGE_ENTRIES; id++) {
-            initStorageSpace(&AllocationTable.space[id]);
-        }
-        AllocationTable.entries = 0u;
+        initAllocationTable(&AllocationTable);
 
         if (saveAllocationTable(&AllocationTable) != FLASH_ERROR_NONE) {
 
@@ -116,20 +122,20 @@ enum storageStatus storageRegisterTable(const struct storageTableEntry * entry) 
     uint32_t            nextAlignedAddress;
     uint32_t            phySpace;
 
-
+    initAllocationTable(&newAllocationTable);
     prevAlignedAddress = flashGetNextSector(CONFIG_ALLOCATION_TABLE_ADDRESS);
     nextAlignedAddress = prevAlignedAddress;
     tableId = 0u;
 
     while ((entry->size != 0u) && (tableId < CONFIG_MAX_STORAGE_ENTRIES)){
         do {
-            nextAlignedAddress = flashGetNextSector(prevAlignedAddress);
+            nextAlignedAddress = flashGetNextSector(nextAlignedAddress);
 
             if (nextAlignedAddress == 0) {
                 goto STORAGE_REGISTER_NO_SPACE;
             }
             phySpace = nextAlignedAddress - prevAlignedAddress;
-        } while (phySpace <= entry->size);
+        } while (phySpace < entry->size);
         strncpy(newAllocationTable.space[tableId].name, entry->name, sizeof(newAllocationTable.space[0].name));
         newAllocationTable.space[tableId].id       = entry->id;
         newAllocationTable.space[tableId].size     = entry->size;

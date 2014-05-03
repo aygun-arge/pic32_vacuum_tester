@@ -83,12 +83,12 @@ static void flashExchange(void * buffer, size_t size) {
 
 static void validatePhy(struct flashPhy * phy) {
     uint8_t             cfiCommand[1];
-    uint8_t             cfi[CFI_FAMILY_ID_Pos];
-    
+    uint8_t             cfi[CFI_FAMILY_ID_Pos + 1u];
+
     spiSSActivate(&FlashSpi);
     cfiCommand[0] = CMD_RDID;
     spiWrite(&FlashSpi,    cfiCommand, sizeof(cfiCommand));
-    spiExchange(&FlashSpi, cfi,  sizeof(cfi));
+    spiExchange(&FlashSpi, cfi,        sizeof(cfi));
     spiSSDeactivate(&FlashSpi);
 
     phy->isValid = true;
@@ -167,10 +167,8 @@ static void readPhy(struct flashPhy * phy) {
 static uint32_t readStatus(void) {
     char buffer[2];
 
-    spiSSActivate(&FlashSpi);
     buffer[0] = CMD_RDSR1;
     flashExchange(buffer, sizeof(buffer));
-    spiSSDeactivate(&FlashSpi);
 
     return (buffer[1]);
 }
@@ -180,10 +178,8 @@ static enum flashError prepareWrite(void) {
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
 
-    spiSSActivate(&FlashSpi);
     wrenCommand = CMD_WREN;
     flashExchange(&wrenCommand, sizeof(wrenCommand));
-    spiSSDeactivate(&FlashSpi);
     
     while ((readStatus() & REG_SR1_WEL) == 0u);
 
@@ -195,10 +191,10 @@ static void readData(uint32_t address, uint8_t * buffer, size_t size) {
 
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4READ;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
+    command[1] = (address >> 24) & 0xffu;
+    command[2] = (address >> 16) & 0xffu;
+    command[3] = (address >>  8) & 0xffu;
+    command[4] = (address >>  0) & 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiExchange(&FlashSpi, buffer,  size);
     spiSSDeactivate(&FlashSpi);
@@ -211,10 +207,10 @@ static void writeData(uint32_t address, const uint8_t * buffer, size_t size) {
     prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4PP;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
+    command[1] = (address >> 24) & 0xffu;
+    command[2] = (address >> 16) & 0xffu;
+    command[3] = (address >>  8) & 0xffu;
+    command[4] = (address >>  0) & 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiWrite(&FlashSpi, buffer,  size);
     spiSSDeactivate(&FlashSpi);
@@ -307,6 +303,8 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
     uint32_t            counter;
     uint32_t            alignedAddress;
 
+    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
+
     validatePhy(&FlashPhy);
 
     if (FlashPhy.isValid == false) {
@@ -326,7 +324,7 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
     counter = chunk;
     size   -= chunk;
 
-    while (size > FlashPhy.ppSize) {
+    while (size >= FlashPhy.ppSize) {
         writeData(alignedAddress, &data[counter], FlashPhy.ppSize);
         alignedAddress += FlashPhy.ppSize;
         counter        += FlashPhy.ppSize;
@@ -334,13 +332,15 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
     }
 
     if (size > 0) {
-        flashWrite(alignedAddress, &data[counter], size);
+        writeData(alignedAddress, &data[counter], size);
     }
 
     return (FLASH_ERROR_NONE);
 }
 
 enum flashError flashRead(uint32_t address, uint8_t * data, size_t size) {
+
+    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
     validatePhy(&FlashPhy);
 
     if (FlashPhy.isValid) {
