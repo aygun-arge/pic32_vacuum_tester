@@ -22,6 +22,8 @@
 #include "logo.h"
 #include "app_buzzer.h"
 #include "app_timer.h"
+#include "app_storage.h"
+#include "config/nv_storage.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -81,7 +83,8 @@
 #define SCREEN_TEST_EN_SECOND_PROGRESS  (0x1u << 3)
 #define SCREEN_TEST_EN_FIRST_STATUS     (0x1u << 4)
 #define SCREEN_TEST_EN_SECOND_STATUS    (0x1u << 5)
-#define SCREEN_TEST_EN_BUTTON           (0x1u << 6)
+#define SCREEN_TEST_BACK_BUTTON         (0x1u << 6)
+#define SCREEN_TEST_RETRY_BUTTON        (0x1u << 7)
 
 #define GUI_TABLE(entry)                                                        \
     entry(stateInit,                TOP)                                        \
@@ -168,6 +171,7 @@ struct screenMain {
 struct screenTest {
     enum testTitle      title;
     bool                isBackgroundEnabled;
+    bool                isRetryEnabled;
     uint32_t            mask;
     int32_t             firstThVal;
     uint32_t            firstThProgress;
@@ -293,9 +297,15 @@ static void gpuInitEarly(void) {
 
     /* Do a core reset for safer side */
     Ft_Gpu_HostCommand(&Gpu, FT_GPU_CORE_RESET);
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO_DIR, 0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO_DIR));
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
 }
 
 static void gpuInitLate(void) {
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO_DIR, 0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO_DIR));
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
+    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
     Ft_Gpu_Hal_Wr16(&Gpu, REG_HCYCLE,   DISP_H_CYCLE);
     Ft_Gpu_Hal_Wr16(&Gpu, REG_HOFFSET,  DISP_H_OFFSET);
     Ft_Gpu_Hal_Wr16(&Gpu, REG_HSYNC0,   DISP_H_SYNC0);
@@ -318,10 +328,7 @@ static void gpuInitLate(void) {
     Ft_Gpu_Hal_Wr32(&Gpu, RAM_DL + 4,   CLEAR(1,1,1));
     Ft_Gpu_Hal_Wr32(&Gpu, RAM_DL + 8,   DISPLAY());
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_DLSWAP,   DLSWAP_FRAME);
-
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO_DIR, 0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO_DIR));
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
-    Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
+    
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_PCLK,     DISP_PCLK);                             /* After this display is visible on the LCD                 */
 }
 
@@ -395,10 +402,19 @@ static void constructButtonBack(enum buttonBackPos position) {
 static void screenWelcome(void) {
     char        buffer[100];
 
+    Ft_Gpu_Hal_WrMem(&Gpu, RAM_G + 131072L, (const uint8_t *)ManufacturerLogo, ManufacturerLogoInfo.size);				/* copy data continuously into RAM_G memory */
     Ft_Gpu_CoCmd_Dlstart(&Gpu);
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+    
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,1,1));
+    
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_HANDLE(13));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_SOURCE(131072L));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_LAYOUT(ManufacturerLogoInfo.format, ManufacturerLogoInfo.linestride, ManufacturerLogoInfo.height));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_SIZE(NEAREST, BORDER, BORDER, ManufacturerLogoInfo.pixelsX, ManufacturerLogoInfo.pixelsY));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BEGIN(BITMAPS));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, VERTEX2II(35, 10, 13, 0));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, WELCOME_GREETING);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION CONFIG_HARDWARE_VERSION);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION CONFIG_SOFTWARE_VERSION);
@@ -502,6 +518,8 @@ static void screenTestToggleBackground(struct wspace * wspace) {
 
 static void screenTestPrepare(struct wspace * wspace) {
 
+    wspace->screen.test.mask = 0;
+    
     switch (evaluateTest(wspace)) {
         case TEST_SUCCESS : {
             wspace->screen.test.title = SCREEN_TEST_SUCCESS;
@@ -532,19 +550,25 @@ static void screenTestPrepare(struct wspace * wspace) {
         strcpy(wspace->screen.test.secondThStatus, "PASSED");
     } else if (wspace->secondTh.isCancelled) {
         strcpy(wspace->screen.test.secondThStatus, "CANCELLED");
+        strcpy(wspace->screen.test.button, "Repeat");
+        wspace->screen.test.mask = SCREEN_TEST_RETRY_BUTTON;
     } else if (wspace->secondTh.isExecuted == false) {
         strcpy(wspace->screen.test.secondThStatus, "SKIPPED");
+        strcpy(wspace->screen.test.button, "Repeat");
+        wspace->screen.test.mask = SCREEN_TEST_RETRY_BUTTON;
     } else {
         strcpy(wspace->screen.test.secondThStatus, "FAILED");
+        strcpy(wspace->screen.test.button, "Retry");
+        wspace->screen.test.mask = SCREEN_TEST_RETRY_BUTTON;
     }
-    wspace->screen.test.mask =
+    wspace->screen.test.mask |=
         SCREEN_TEST_EN_FIRST_INFO  | SCREEN_TEST_EN_FIRST_STATUS  |
         SCREEN_TEST_EN_SECOND_INFO | SCREEN_TEST_EN_SECOND_STATUS |
-        SCREEN_TEST_EN_BUTTON;
+        SCREEN_TEST_BACK_BUTTON;
     wspace->screen.test.firstThVal  = wspace->firstTh.rawMaxValue;
     wspace->screen.test.secondThVal = wspace->secondTh.rawMaxValue;
     wspace->screen.test.isBackgroundEnabled = true;
-    strcpy(wspace->screen.test.button, "Continue");
+    
 }
 
 static void screenTestDump(struct screenTest * status) {
@@ -617,12 +641,16 @@ static void screenTestDump(struct screenTest * status) {
         Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_2_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0, status->secondThVal, status->secondThProgress);
     }
 
-    if (status->mask & SCREEN_TEST_EN_BUTTON) {
+    if (status->mask & SCREEN_TEST_BACK_BUTTON) {
+        constructButtonBack(DOWN_LEFT);
+    }
+
+    if (status->mask & SCREEN_TEST_RETRY_BUTTON) {
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
         Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_TAG(0));
         Ft_Gpu_Hal_WrCmd32(&Gpu, TAG_MASK(1));
-        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-        Ft_Gpu_CoCmd_Button(&Gpu, 95, 180, 130, 40, DEF_N1_FONT_SIZE, 0, status->button);
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
+        Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, status->button);
     }
     Ft_Gpu_Hal_WrCmd32(&Gpu, DISPLAY());
     Ft_Gpu_CoCmd_Swap(&Gpu);
@@ -805,6 +833,7 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
             appTimerInit(&wspace->timeout);
             appTimerInit(&wspace->refresh);
             gpuInitEarly();
+            
 
             return (ES_STATE_TRANSITION(stateWakeUpLcd));
         }
@@ -899,6 +928,18 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
         case MAIN_REFRESH_: {
             switch (getKey()) {
                 case 'T' : {
+                    wspace->retry                = 0u;
+                    wspace->firstTh.isValid      = false;
+                    wspace->firstTh.isCancelled  = false;
+                    wspace->firstTh.isExecuted   = false;
+                    wspace->firstTh.rawMaxValue  = 0u;
+                    wspace->firstTh.time         = configGetFirstThTimeout();
+                    wspace->secondTh.isValid     = false;
+                    wspace->secondTh.isCancelled = false;
+                    wspace->secondTh.isExecuted  = false;
+                    wspace->secondTh.rawMaxValue = 0u;
+                    wspace->firstTh.time         = configGetSecondThTimeout();
+                    wspace->rawIdleVacuum        = getDutRawValue();
 
                     return (ES_STATE_TRANSITION(statePreTest));
                 }
@@ -954,17 +995,7 @@ static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
         case PRE_TEST_WAIT_: {
 
             if (isDutDetected()) {
-                wspace->firstTh.isValid      = false;
-                wspace->firstTh.isCancelled  = false;
-                wspace->firstTh.isExecuted   = false;
-                wspace->firstTh.rawMaxValue  = 0u;
-                wspace->firstTh.time         = configGetFirstThTimeout();
-                wspace->secondTh.isValid     = false;
-                wspace->secondTh.isCancelled = false;
-                wspace->secondTh.isExecuted  = false;
-                wspace->secondTh.rawMaxValue = 0u;
-                wspace->firstTh.time         = configGetSecondThTimeout();
-                wspace->rawIdleVacuum        = getDutRawValue();
+                wspace->retry++;
 
                 return (ES_STATE_TRANSITION(stateTestFirstTh));
             } else {
@@ -1196,17 +1227,22 @@ static esAction stateTestResultsNotify(struct wspace * wspace, const esEvent * e
             return (ES_STATE_HANDLED());
         }
         case TEST_RESULTS_NOTIFY_REFRESH_: {
-            if (getKey() == 'B') {
+            switch (getKey()) {
+                case 'B' : {
 
-                return (ES_STATE_TRANSITION(stateTestResultsSaving));
-            } else {
-                appTimerStart(
-                    &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
-                    TEST_RESULTS_NOTIFY_REFRESH_);
+                    return (ES_STATE_TRANSITION(stateTestResultsSaving));
+                }
+                case 'R' : {
 
-                return (ES_STATE_HANDLED());
+                    return (ES_STATE_TRANSITION(statePreTest));
+                }
             }
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                TEST_RESULTS_NOTIFY_REFRESH_);
+
+            return (ES_STATE_HANDLED());
         }
         case TEST_RESULTS_NOTIFY_TIMEOUT_: {
             screenTestDump(&wspace->screen.test);
@@ -1250,6 +1286,7 @@ static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * e
         }
     }
 }
+
 static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {

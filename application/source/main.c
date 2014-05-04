@@ -31,8 +31,10 @@
 #include "eds/epa.h"
 
 #include "epa_gui.h"
+#include "nv_storage.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
+
 /*======================================================  LOCAL DATA TYPES  ==*/
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
 
@@ -43,6 +45,11 @@ static void nativeFsm(void);
 static const ES_MODULE_INFO_CREATE("main", "main loop", "Nenad Radulovic");
 
 static uint8_t          StaticMemBuff[16384];
+
+static const struct storageTableEntry nvStorage[] = {
+    NV_STORAGE_TABLE(EXPAND_STORAGE_ENTRY)
+    {0, 0, 0,}
+};
 
 /*======================================================  GLOBAL VARIABLES  ==*/
 
@@ -80,7 +87,10 @@ int main(void) {
     initStorage();
 
     /*--  Start up tone  -----------------------------------------------------*/
-    buzzerTone(20);
+    //buzzerTone(20);
+
+    /*--  Set up NV storage  -------------------------------------------------*/
+    storageRegisterTable(nvStorage);
 
     /*--  Set-up memories  ---------------------------------------------------*/
     esMemInit(

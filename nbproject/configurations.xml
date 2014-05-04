@@ -9,6 +9,7 @@
           <itemPath>application/include/config/HardwareProfile.h</itemPath>
           <itemPath>application/include/config/mcu_config.h</itemPath>
           <itemPath>application/include/config/software_profile.h</itemPath>
+          <itemPath>application/include/config/nv_storage.h</itemPath>
         </logicalFolder>
         <itemPath>application/include/app_config.h</itemPath>
         <itemPath>application/include/app_usb.h</itemPath>
@@ -23,6 +24,8 @@
         <itemPath>application/include/logo.h</itemPath>
         <itemPath>application/include/app_storage.h</itemPath>
         <itemPath>application/include/app_timer.h</itemPath>
+        <itemPath>application/include/app_data_log.h</itemPath>
+        <itemPath>application/include/app_user.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -38,6 +41,8 @@
         <itemPath>application/source/logo.c</itemPath>
         <itemPath>application/source/app_storage.c</itemPath>
         <itemPath>application/source/app_timer.c</itemPath>
+        <itemPath>application/source/app_data_log.c</itemPath>
+        <itemPath>application/source/app_user.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -294,7 +299,7 @@
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="true"/>
         <property key="make-warnings-into-errors" value="false"/>
-        <property key="optimization-level" value=""/>
+        <property key="optimization-level" value="-Os"/>
         <property key="place-data-into-section" value="true"/>
         <property key="post-instruction-scheduling" value="default"/>
         <property key="pre-instruction-scheduling" value="default"/>
@@ -406,7 +411,6 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>

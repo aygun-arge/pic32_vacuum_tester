@@ -11,17 +11,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "base/error.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-enum storageStatus {
-    STORAGE_OK,
-    STORAGE_NOT_MOUNTED,
-    STORAGE_NO_SPACE,
-    STORAGE_INVALID_HANDLE,
-    STORAGE_HANDLE_NOT_EXISTS
-};
 
 struct storageTableEntry {
     char *              name;
@@ -32,22 +26,22 @@ struct storageTableEntry {
 struct storageSpace;
 
 void initStorage(void);
-enum storageStatus storageRegisterTable(const struct storageTableEntry * entry);
-enum storageStatus storageOpen(uint32_t id, struct storageSpace ** space);
-enum storageStatus storageClear(struct storageSpace * space);
-enum storageStatus storageRead(
+esError storageRegisterTable(const struct storageTableEntry * entry);
+esError storageOpen(uint32_t id, struct storageSpace ** space);
+esError storageClearSpace(struct storageSpace * space);
+esError storageRead(
     struct storageSpace * space,
     uint8_t *           buffer,
     size_t              size,
     size_t *            read);
-enum storageStatus storageSetPos(struct storageSpace * space, uint32_t pos);
-enum storageStatus storageWrite(
+esError storageSetPos(struct storageSpace * space, uint32_t pos);
+esError storageWrite(
     struct storageSpace * space,
     const uint8_t *     buffer,
     size_t              size,
     size_t *            written);
-enum storageStatus storageGetSize(struct storageSpace * space, size_t * size);
-enum storageStatus storageGetEmpty(struct storageSpace * space, size_t * empty);
+esError storageGetSize(struct storageSpace * space, size_t * size);
+esError storageGetEmpty(struct storageSpace * space, size_t * empty);
 
 #ifdef	__cplusplus
 }

@@ -4,6 +4,7 @@
 #include "driver/spi.h"
 
 #include "base/bitop.h"
+#include "base/error.h"
 
 #define CONFIG_S25_SPI_MODULE           &SpiSoft
 #define CONFIG_S25FL_SDI                SPIS_SDI_C4
@@ -173,7 +174,7 @@ static uint32_t readStatus(void) {
     return (buffer[1]);
 }
 
-static enum flashError prepareWrite(void) {
+static void prepareWrite(void) {
     uint8_t             wrenCommand;
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
@@ -182,8 +183,6 @@ static enum flashError prepareWrite(void) {
     flashExchange(&wrenCommand, sizeof(wrenCommand));
     
     while ((readStatus() & REG_SR1_WEL) == 0u);
-
-    return (FLASH_ERROR_NONE);
 }
 
 static void readData(uint32_t address, uint8_t * buffer, size_t size) {
@@ -240,14 +239,10 @@ void termFlashDriver(void) {
     spiClose(&FlashSpi);
 }
 
-enum flashError flashEraseSector(uint32_t address) {
+esError flashEraseSector(uint32_t address) {
     uint8_t             command[5];
-    enum flashError     error;
 
-    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
-
-        return (error);
-    }
+    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4SE;
     command[1] = (address >> 24) && 0xffu;
@@ -257,48 +252,42 @@ enum flashError flashEraseSector(uint32_t address) {
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashEraseAll(void) {
+esError flashEraseAll(void) {
     uint32_t            command[1];
-    enum flashError     error;
     
-    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
-
-        return (error);
-    }
+    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_BE;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashErrorStateIs(void) {
+esError flashErrorStateIs(void) {
 
     uint8_t             status;
 
     if (FlashPhy.isValid == false) {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
     status = readStatus();
 
-    if (status & REG_SR1_P_ERR) {
+    if ((status & REG_SR1_P_ERR) ||
+        (status & REG_SR1_E_ERR)) {
 
-        return (FLASH_ERROR_PROGRAMMING);
-    } else if (status & REG_SR1_E_ERR) {
-
-        return (FLASH_ERROR_ERASE);
+        return (ES_ERROR_DEVICE_BUSY);
     } else {
 
-        return (FLASH_ERROR_NONE);
+        return (ES_ERROR_NONE);
     }
 }
 
-enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
+esError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
     uint32_t            chunk;
     uint32_t            counter;
     uint32_t            alignedAddress;
@@ -309,7 +298,7 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
 
     if (FlashPhy.isValid == false) {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
     alignedAddress = ES_ALIGN_UP(address, FlashPhy.ppSize);
     chunk          = alignedAddress - address;
@@ -335,10 +324,10 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
         writeData(alignedAddress, &data[counter], size);
     }
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashRead(uint32_t address, uint8_t * data, size_t size) {
+esError flashRead(uint32_t address, uint8_t * data, size_t size) {
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
     validatePhy(&FlashPhy);
@@ -346,10 +335,10 @@ enum flashError flashRead(uint32_t address, uint8_t * data, size_t size) {
     if (FlashPhy.isValid) {
         readData(address, data, size);
 
-        return (FLASH_ERROR_NONE);
+        return (ES_ERROR_NONE);
     } else {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
 }
 
