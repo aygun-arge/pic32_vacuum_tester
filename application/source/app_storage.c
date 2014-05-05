@@ -179,6 +179,7 @@ esError storageRegisterTable(const struct storageTableEntry * entry) {
             }
         }
     }
+    error = ES_ERROR_NONE;
 
     if (tableNeedsUpdate) {
         memcpy(&AllocationTable, &newAllocationTable, sizeof(AllocationTable));
