@@ -19,18 +19,63 @@
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 const struct gpio GpioA = {
-    &PORTA, &TRISA, &LATA, &LATASET, &LATACLR, &LATAINV, &CNPUA, &CNPDA, &ANSELA
+    .port     = &PORTA,
+    .tris     = &TRISA,
+    .lat      = &LATA,
+    .set      = &LATASET,
+    .clr      = &LATACLR,
+    .invert   = &LATAINV,
+    .od       = &ODCA,
+    .change   = &CNENA,
+    .status   = &CNSTATA,
+    .pullup   = &CNPUA,
+    .pulldown = &CNPDA,
+    .ansel    = &ANSELA
 };
 
 const struct gpio GpioB = {
-    &PORTB, &TRISB, &LATB, &LATBSET, &LATBCLR, &LATBINV, &CNPUB, &CNPDB, &ANSELB
+    .port     = &PORTB,
+    .tris     = &TRISB,
+    .lat      = &LATB,
+    .set      = &LATBSET,
+    .clr      = &LATBCLR,
+    .invert   = &LATBINV,
+    .od       = &ODCB,
+    .change   = &CNENB,
+    .status   = &CNSTATB,
+    .pullup   = &CNPUB,
+    .pulldown = &CNPDB,
+    .ansel    = &ANSELB
 };
 
 const struct gpio GpioC = {
-    &PORTC, &TRISC, &LATC, &LATCSET, &LATCCLR, &LATCINV, &CNPUC, &CNPDC, &ANSELC
+    .port     = &PORTC,
+    .tris     = &TRISC,
+    .lat      = &LATC,
+    .set      = &LATCSET,
+    .clr      = &LATCCLR,
+    .invert   = &LATCINV,
+    .od       = &ODCC,
+    .change   = &CNENC,
+    .status   = &CNSTATC,
+    .pullup   = &CNPUC,
+    .pulldown = &CNPDC,
+    .ansel    = &ANSELC
 };
 
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
+
+static void initPort(struct gpio * gpio) {
+    *(gpio->port)     = 0u;
+    *(gpio->tris)     = 0xffffffffu;
+    *(gpio->lat)      = 0u;
+    *(gpio->od)       = 0u;
+    *(gpio->change)   = 0u;
+    *(gpio->pullup)   = 0u;
+    *(gpio->pulldown) = 0u;
+    *(gpio->ansel)    = 0u;
+}
+
 /*===================================  GLOBAL PRIVATE FUNCTION DEFINITIONS  ==*/
 /*====================================  GLOBAL PUBLIC FUNCTION DEFINITIONS  ==*/
 
@@ -40,18 +85,9 @@ void initGpioDriver(
     /*
      * Setup all pins as digital IO with push-pull mode
      */
-    ANSELA = 0u;
-    ODCA   = 0u;
-    CNPUA  = 0u;
-    CNPDA  = 0u;
-    ANSELB = 0u;
-    CNPUB  = 0u;
-    CNPDB  = 0u;
-    ODCB   = 0u;
-    ANSELC = 0u;
-    ODCC   = 0u;
-    CNPUC  = 0u;
-    CNPDC  = 0u;
+    initPort(&GpioA);
+    initPort(&GpioB);
+    initPort(&GpioC);
 #endif
 }
 

@@ -409,15 +409,13 @@ ft_void_t Ft_Gpu_Hal_WrCmdBuf(Ft_Gpu_Hal_Context_t *host,ft_uint8_t *buffer,ft_u
 #endif
 #ifdef PIC32_PLATFORM
         {
-            (void)SizeTransfered;
-            ft_uint32_t sizeToTransfer;
-
-            sizeToTransfer = length;
-
-            while (sizeToTransfer--) {
-                Ft_Gpu_Hal_Transfer8(host, *buffer);
+            SizeTransfered = 0;
+            while (length--) {
+                Ft_Gpu_Hal_Transfer8(host,*buffer);
                 buffer++;
+                SizeTransfered ++;
             }
+            length = SizeTransfered;
         }
 #endif
 		Ft_Gpu_Hal_EndTransfer(host);
@@ -577,16 +575,10 @@ ft_void_t Ft_Gpu_Hal_WrMemFromFlash(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,
 	}
 #endif
 #ifdef PIC32_PLATFORM
-    (void)SizeTransfered;
-    
     while (length--) {
-        ft_uint8_t byte;
-
-        byte = *buffer;
-        spiExchange((struct spiHandle *)host->hal_handle, &byte, 1u);
-        buffer++;
-    }
-    
+        Ft_Gpu_Hal_Transfer8(host, *buffer);
+	    buffer++;
+	}
 #endif
 
 	Ft_Gpu_Hal_EndTransfer(host);
@@ -611,15 +603,10 @@ ft_void_t Ft_Gpu_Hal_WrMem(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,const ft_
 	}
 #endif
 #ifdef PIC32_PLATFORM
-    (void)SizeTransfered;
-    
     while (length--) {
-        ft_uint8_t byte;
-
-        byte = *buffer;
-        spiExchange((struct spiHandle *)host->hal_handle, &byte, 1u);
-        buffer++;
-    }
+        Ft_Gpu_Hal_Transfer8(host,*buffer);
+	    buffer++;
+	}
 #endif
 	Ft_Gpu_Hal_EndTransfer(host);
 }

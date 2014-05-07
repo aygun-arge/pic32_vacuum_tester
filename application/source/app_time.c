@@ -11,6 +11,18 @@
 #define CONFIG_VALID_DATE_FORMAT        "%02d-%02d-%04d"
 #define CONFIG_INVALID_DATE_FORMAT      "==-==-===="
 
+esError appTimeGet(struct appTime * time) {
+    (void)time;
+
+    return (ES_ERROR_NOT_IMPLEMENTED);
+}
+
+esError appTimeSet(const struct appTime * time) {
+    (void)time;
+
+    return (ES_ERROR_NOT_IMPLEMENTED);
+}
+
 uint32_t snprintRtcTime(char * buffer) {
 
     if (isRtcActive()) {

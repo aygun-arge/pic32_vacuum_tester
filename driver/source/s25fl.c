@@ -4,6 +4,7 @@
 #include "driver/spi.h"
 
 #include "base/bitop.h"
+#include "base/error.h"
 
 #define CONFIG_S25_SPI_MODULE           &SpiSoft
 #define CONFIG_S25FL_SDI                SPIS_SDI_C4
@@ -83,12 +84,12 @@ static void flashExchange(void * buffer, size_t size) {
 
 static void validatePhy(struct flashPhy * phy) {
     uint8_t             cfiCommand[1];
-    uint8_t             cfi[CFI_FAMILY_ID_Pos];
-    
+    uint8_t             cfi[CFI_FAMILY_ID_Pos + 1u];
+
     spiSSActivate(&FlashSpi);
     cfiCommand[0] = CMD_RDID;
     spiWrite(&FlashSpi,    cfiCommand, sizeof(cfiCommand));
-    spiExchange(&FlashSpi, cfi,  sizeof(cfi));
+    spiExchange(&FlashSpi, cfi,        sizeof(cfi));
     spiSSDeactivate(&FlashSpi);
 
     phy->isValid = true;
@@ -167,27 +168,21 @@ static void readPhy(struct flashPhy * phy) {
 static uint32_t readStatus(void) {
     char buffer[2];
 
-    spiSSActivate(&FlashSpi);
     buffer[0] = CMD_RDSR1;
     flashExchange(buffer, sizeof(buffer));
-    spiSSDeactivate(&FlashSpi);
 
     return (buffer[1]);
 }
 
-static enum flashError prepareWrite(void) {
+static void prepareWrite(void) {
     uint8_t             wrenCommand;
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
 
-    spiSSActivate(&FlashSpi);
     wrenCommand = CMD_WREN;
     flashExchange(&wrenCommand, sizeof(wrenCommand));
-    spiSSDeactivate(&FlashSpi);
     
     while ((readStatus() & REG_SR1_WEL) == 0u);
-
-    return (FLASH_ERROR_NONE);
 }
 
 static void readData(uint32_t address, uint8_t * buffer, size_t size) {
@@ -195,10 +190,10 @@ static void readData(uint32_t address, uint8_t * buffer, size_t size) {
 
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4READ;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
+    command[1] = (address >> 24) & 0xffu;
+    command[2] = (address >> 16) & 0xffu;
+    command[3] = (address >>  8) & 0xffu;
+    command[4] = (address >>  0) & 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiExchange(&FlashSpi, buffer,  size);
     spiSSDeactivate(&FlashSpi);
@@ -211,10 +206,10 @@ static void writeData(uint32_t address, const uint8_t * buffer, size_t size) {
     prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4PP;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
+    command[1] = (address >> 24) & 0xffu;
+    command[2] = (address >> 16) & 0xffu;
+    command[3] = (address >>  8) & 0xffu;
+    command[4] = (address >>  0) & 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiWrite(&FlashSpi, buffer,  size);
     spiSSDeactivate(&FlashSpi);
@@ -244,14 +239,10 @@ void termFlashDriver(void) {
     spiClose(&FlashSpi);
 }
 
-enum flashError flashEraseSector(uint32_t address) {
+esError flashEraseSector(uint32_t address) {
     uint8_t             command[5];
-    enum flashError     error;
 
-    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
-
-        return (error);
-    }
+    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4SE;
     command[1] = (address >> 24) && 0xffu;
@@ -261,57 +252,53 @@ enum flashError flashEraseSector(uint32_t address) {
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashEraseAll(void) {
+esError flashEraseAll(void) {
     uint32_t            command[1];
-    enum flashError     error;
     
-    if ((error = prepareWrite()) != FLASH_ERROR_NONE) {
-
-        return (error);
-    }
+    prepareWrite();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_BE;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashErrorStateIs(void) {
+esError flashErrorStateIs(void) {
 
     uint8_t             status;
 
     if (FlashPhy.isValid == false) {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
     status = readStatus();
 
-    if (status & REG_SR1_P_ERR) {
+    if ((status & REG_SR1_P_ERR) ||
+        (status & REG_SR1_E_ERR)) {
 
-        return (FLASH_ERROR_PROGRAMMING);
-    } else if (status & REG_SR1_E_ERR) {
-
-        return (FLASH_ERROR_ERASE);
+        return (ES_ERROR_DEVICE_BUSY);
     } else {
 
-        return (FLASH_ERROR_NONE);
+        return (ES_ERROR_NONE);
     }
 }
 
-enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
+esError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
     uint32_t            chunk;
     uint32_t            counter;
     uint32_t            alignedAddress;
+
+    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
 
     validatePhy(&FlashPhy);
 
     if (FlashPhy.isValid == false) {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
     alignedAddress = ES_ALIGN_UP(address, FlashPhy.ppSize);
     chunk          = alignedAddress - address;
@@ -326,7 +313,7 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
     counter = chunk;
     size   -= chunk;
 
-    while (size > FlashPhy.ppSize) {
+    while (size >= FlashPhy.ppSize) {
         writeData(alignedAddress, &data[counter], FlashPhy.ppSize);
         alignedAddress += FlashPhy.ppSize;
         counter        += FlashPhy.ppSize;
@@ -334,22 +321,24 @@ enum flashError flashWrite(uint32_t address, const uint8_t * data, size_t size) 
     }
 
     if (size > 0) {
-        flashWrite(alignedAddress, &data[counter], size);
+        writeData(alignedAddress, &data[counter], size);
     }
 
-    return (FLASH_ERROR_NONE);
+    return (ES_ERROR_NONE);
 }
 
-enum flashError flashRead(uint32_t address, uint8_t * data, size_t size) {
+esError flashRead(uint32_t address, uint8_t * data, size_t size) {
+
+    while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
     validatePhy(&FlashPhy);
 
     if (FlashPhy.isValid) {
         readData(address, data, size);
 
-        return (FLASH_ERROR_NONE);
+        return (ES_ERROR_NONE);
     } else {
 
-        return (FLASH_ERROR_NOT_VALID);
+        return (ES_ERROR_DEVICE_FAIL);
     }
 }
 

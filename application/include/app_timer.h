@@ -33,6 +33,9 @@ void appTimerCancel(
     struct appTimer *   timer);
 
 
+esSysTimerTick appTimerGetRemaining(
+    const struct appTimer * timer);
+
 #ifdef	__cplusplus
 }
 #endif

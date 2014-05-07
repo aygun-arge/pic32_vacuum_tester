@@ -12,7 +12,7 @@
 #include "app_timer.h"
 #include "base/debug.h"
 
-static const ES_MODULE_INFO_CREATE("app_timer", "Application Timers", "Nenad Radulovic");
+static const ES_MODULE_INFO_CREATE("AppTimer", "Application Event Timers", "Nenad Radulovic");
 
 static void timeout(void * arg) {
 
@@ -48,4 +48,10 @@ void appTimerCancel(
     struct appTimer *   timer) {
 
     esVTimerCancel(&timer->timer);
+}
+
+esSysTimerTick appTimerGetRemaining(
+    const struct appTimer * timer) {
+    
+    return (esVTimerGetRemaining(&timer->timer));
 }
