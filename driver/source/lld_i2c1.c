@@ -8,6 +8,7 @@
 #include "driver/i2c.h"
 #include "driver/clock.h"
 #include "TimeDelay.h"
+#include "driver/gpio.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -71,7 +72,11 @@ static void open(const struct i2cConfig * config, struct i2cHandle * handle) {
     pbclk   = clockGetPeripheralClock();
     I2C1BRG =
         (pbclk / (2 * config->speed)) - ES_DIVISION_ROUND((CONFIG_PULSE_GOBBLER_NS * (pbclk / 1000)), 1000000) - 2;
-    IC2CONSET       = I2C_CON_ON;
+    *GpioB.tris     &= ~(0x1u << 8);
+    *GpioB.tris     &= ~(0x1u << 9);
+    *GpioB.od       |=  (0x1u << 8);
+    *GpioB.od       |=  (0x1u << 9);
+    I2C1CONSET       = I2C_CON_ON;
 }
 
 static void close(struct i2cHandle * handle) {
@@ -102,11 +107,11 @@ static bool write(struct i2cHandle * handle, uint8_t data) {
 static uint8_t read(struct i2cHandle * handle) {
 
     while ((I2C1CON & (I2C_CON_SEN | I2C_CON_RSEN | I2C_CON_PEN | I2C_CON_RCEN | I2C_CON_ACKEN)) != 0);
+    I2C1CON |= I2C_CON_RCEN;
 
-    I2C1CONSET = I2C_CON_RCEN;
+    while ((I2C1STAT & I2C_STAT_RBF) == 0);
 
     while (I2C1CON & I2C_CON_RCEN);
-    while ((I2C1STAT & I2C_STAT_RBF) == 0);
 
     return (I2C1RCV);
 }
@@ -114,7 +119,6 @@ static uint8_t read(struct i2cHandle * handle) {
 static void start(struct i2cHandle * handle) {
     (void)handle;
 
-    while ((I2C1STAT & I2C_STAT_P) == 0);
     while ((I2C1CON & (I2C_CON_SEN | I2C_CON_RSEN | I2C_CON_PEN | I2C_CON_RCEN | I2C_CON_ACKEN)) != 0);
 
     I2C1CONSET = I2C_CON_SEN;

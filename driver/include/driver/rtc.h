@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "base/error.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -26,7 +28,8 @@ struct rtcTime {
 
 void initRtcDriver(void);
 void termRtcDriver(void);
-void rtcGetTime(struct rtcTime * time);
+esError rtcSetTime(const struct rtcTime * time);
+esError rtcGetTime(struct rtcTime * time);
 bool isRtcActive(void);
 
 #ifdef	__cplusplus

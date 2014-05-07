@@ -66,7 +66,7 @@ void i2cNack(
 
 bool i2cWriteArray(
     struct i2cHandle *          handle,
-    uint8_t *                   data,
+    const uint8_t *             data,
     size_t                      size);
 
 bool i2cWrite(
