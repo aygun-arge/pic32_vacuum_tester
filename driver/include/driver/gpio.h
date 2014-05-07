@@ -26,6 +26,9 @@ struct gpio {
     volatile unsigned int * set;
     volatile unsigned int * clr;
     volatile unsigned int * invert;
+    volatile unsigned int * od;
+    volatile unsigned int * change;
+    volatile unsigned int * status;
     volatile unsigned int * pullup;
     volatile unsigned int * pulldown;
     volatile unsigned int * ansel;
