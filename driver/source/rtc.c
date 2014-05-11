@@ -18,6 +18,18 @@
 #define CONFIG_RTC_INT_PORT             &GpioA
 #define CONFIG_RTC_INT_PIN              7
 
+#define CHANGE_INT_GPIOA                (0x1u << 13)
+#define CHANGE_PRIO_GPIOA               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOA            (0x3u << 16)
+
+#define CHANGE_INT_GPIOB                (0x1u << 14)
+#define CHANGE_PRIO_GPIOB               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOB            (0x3u << 16)
+
+#define CHANGE_INT_GPIOC                (0x1u << 15)
+#define CHANGE_PRIO_GPIOC               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOC            (0x3u << 16)
+
 #define REG_CONTROL_1                   0x00
 #define REG_CONTROL_INT                 0x01
 #define REG_CONTROL_INT_FLAG            0x02
@@ -40,8 +52,8 @@
 #define REG_ALARM_MONTHS                0x15
 #define REG_ALARM_YEAR                  0x16
 
-#define REG_ALARM_TIMER_LOW             0x18
-#define REG_ALARM_TIMER_HIGH            0x19
+#define REG_TIMER_LOW                   0x18
+#define REG_TIMER_HIGH                  0x19
 
 #define REG_TEMPERATURE                 0x20
 
@@ -81,6 +93,10 @@
 #define RTC_READ_CMD                    (RTC_SLAVE_ADDRESS |  0x1u)
 #define RTC_WRITE_CMD                   (RTC_SLAVE_ADDRESS & ~0x1u)
 
+#define ENABLE_RTC_ISR()                                                        \
+    do {                                                                        \
+        if ()
+
 struct rtcTimeRegisters {
     uint8_t             seconds;
     uint8_t             minutes;
@@ -95,7 +111,8 @@ static const ES_MODULE_INFO_CREATE("RTC", "Real Time Clock", "Nenad Radulovic");
 
 static struct i2cHandle RtcI2c;
 
-static struct rtcTime CurrentTime;
+static struct rtcTime   CurrentTime;
+static bool             IsCurrentTimeValid;
 
 static esError rtcReadArray(uint8_t address, uint8_t * data, size_t size) {
     ES_REQUIRE(ES_API_RANGE, size < 8);
@@ -185,6 +202,32 @@ static uint8_t binToBcd(uint8_t data) {
     return (retval);
 }
 
+static esError rtcFetchTime(struct rtcTime * time) {
+
+    struct rtcTimeRegisters regs;
+
+    if (rtcReadArray(REG_SECONDS, (uint8_t *)&regs, sizeof(regs)) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+    time->year   = (uint16_t)bcdToBin(regs.years) + 2000u;
+    time->month  = bcdToBin(regs.months);
+    time->day    = bcdToBin(regs.days);
+    time->hour   = bcdToBin(regs.hours);
+    time->minute = bcdToBin(regs.minutes);
+    time->second = bcdToBin(regs.seconds);
+
+    return (ES_ERROR_NONE);
+FAILURE:
+    time->year   = CONFIG_DEFAULT_YEAR;
+    time->month  = CONFIG_DEFAULT_MONTH;
+    time->day    = CONFIG_DEFAULT_DAY;
+    time->hour   = CONFIG_DEFAULT_HOUR;
+    time->minute = CONFIG_DEFAULT_MINUTE;
+    time->second = CONFIG_DEFAULT_SECOND;
+
+    return (ES_ERROR_DEVICE_FAIL);
+}
+
 void initRtcDriver(void) {
     uint8_t             reg;
     struct rtcTimeRegisters regs;
@@ -220,18 +263,8 @@ void initRtcDriver(void) {
     *(CONFIG_RTC_INT_PORT)->tris   |= (0x1u << CONFIG_RTC_INT_PIN);
     *(CONFIG_RTC_INT_PORT)->change |= (0x1u << CONFIG_RTC_INT_PIN);
 
-#define CHANGE_INT_GPIOA                (0x1u << 13)
-#define CHANGE_PRIO_GPIOA               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOA            (0x3u << 16)
-
-#define CHANGE_INT_GPIOB                (0x1u << 14)
-#define CHANGE_PRIO_GPIOB               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOB            (0x3u << 16)
-
-#define CHANGE_INT_GPIOC                (0x1u << 15)
-#define CHANGE_PRIO_GPIOC               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOC            (0x3u << 16)
-
+    /* NOTE: Optimizations will remove conditionals
+     */
     if (CONFIG_RTC_INT_PORT == &GpioA) {
         IFS1CLR       = CHANGE_INT_GPIOA;
         IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
@@ -249,15 +282,28 @@ void initRtcDriver(void) {
         IEC1SET       = CHANGE_INT_GPIOC;
     }
     
-    if (rtcWrite(REG_CONTROL_INT_FLAG, 0) != ES_ERROR_NONE) {
+    if (rtcWrite(REG_CONTROL_INT, 0) != ES_ERROR_NONE) {
         goto FAILURE;
     }
-    reg = CONTROL_INT_TIE;
+    reg = CONTROL_1_WE;
 
-    if (rtcWrite(REG_CONTROL_INT, reg) != ES_ERROR_NONE) {
+    if (rtcWrite(REG_CONTROL_1, reg) != ES_ERROR_NONE) {
         goto FAILURE;
     }
-    reg = CONTROL_1_WE | CONTROL_1_TE | CONTROL_1_TAR | CONTROL_1_TD0;
+
+    if (rtcWrite(REG_TIMER_LOW, 32) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+
+    if (rtcWrite(REG_TIMER_HIGH, 0) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+    reg |= CONTROL_1_TAR;
+
+    if (rtcWrite(REG_CONTROL_1, reg) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+    reg |= CONTROL_1_TE;
 
     if (rtcWrite(REG_CONTROL_1, reg) != ES_ERROR_NONE) {
         goto FAILURE;
@@ -268,18 +314,22 @@ void initRtcDriver(void) {
         goto FAILURE;
     }
 
-    if (rtcGetTime(&CurrentTime) != ES_ERROR_NONE) {
+    if (rtcFetchTime(&CurrentTime) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+
+    if (rtcWrite(REG_CONTROL_INT_FLAG, 0) != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+
+    if (rtcWrite(REG_CONTROL_INT, CONTROL_INT_TIE) != ES_ERROR_NONE) {
         goto FAILURE;
     }
 
     return;
 FAILURE:
-    CurrentTime.year   = CONFIG_DEFAULT_YEAR;
-    CurrentTime.month  = CONFIG_DEFAULT_MONTH;
-    CurrentTime.day    = CONFIG_DEFAULT_DAY;
-    CurrentTime.hour   = CONFIG_DEFAULT_HOUR;
-    CurrentTime.minute = CONFIG_DEFAULT_MINUTE;
-    CurrentTime.second = CONFIG_DEFAULT_SECOND;
+
+    return;
 }
 
 void termRtcDriver(void) {
@@ -311,23 +361,32 @@ FAILURE:
 }
 
 esError rtcGetTime(struct rtcTime * time) {
-    
-    struct rtcTimeRegisters regs;
+    esError             error;
 
-    if (rtcReadArray(REG_SECONDS, (uint8_t *)&regs, sizeof(regs)) != ES_ERROR_NONE) {
-        goto FAILURE;
+    if (CONFIG_RTC_INT_PORT == &GpioA) {
+        IEC1CLR = CHANGE_INT_GPIOA;
+    } else if (CONFIG_RTC_INT_PORT == &GpioB) {
+        IEC1CLR = CHANGE_INT_GPIOB;
+    } else if (CONFIG_RTC_INT_PORT == &GpioC) {
+        IEC1CLR = CHANGE_INT_GPIOC;
     }
-    time->year   = (uint16_t)bcdToBin(regs.years) + 2000u;
-    time->month  = bcdToBin(regs.months);
-    time->day    = bcdToBin(regs.days);
-    time->hour   = bcdToBin(regs.hours);
-    time->minute = bcdToBin(regs.minutes);
-    time->second = bcdToBin(regs.seconds);
+    memcpy(time, &CurrentTime, sizeof(*time));
 
-    return (ES_ERROR_NONE);
-FAILURE:
+    if (IsCurrentTimeValid) {
+        error = ES_ERROR_NONE;
+    } else {
+        error = ES_ERROR_DEVICE_FAIL;
+    }
 
-    return (ES_ERROR_DEVICE_FAIL);
+    if (CONFIG_RTC_INT_PORT == &GpioA) {
+        IEC1SET = CHANGE_INT_GPIOA;
+    } else if (CONFIG_RTC_INT_PORT == &GpioB) {
+        IEC1SET = CHANGE_INT_GPIOB;
+    } else if (CONFIG_RTC_INT_PORT == &GpioC) {
+        IEC1SET = CHANGE_INT_GPIOC;
+    }
+
+    return (error);
 }
 
 void __ISR(_CHANGE_NOTICE_VECTOR) changeNoticeHandler(void) {
@@ -338,15 +397,20 @@ void __ISR(_CHANGE_NOTICE_VECTOR) changeNoticeHandler(void) {
         port = *(CONFIG_RTC_INT_PORT)->port;
 
         if (port & (0x1u << CONFIG_RTC_INT_PIN)) {
-            rtcGetTime(&CurrentTime);
-        }
+            uint8_t     reg;
 
-        if (CONFIG_RTC_INT_PORT == &GpioA) {
-            IFS1CLR       = CHANGE_INT_GPIOA;
-        } else if (CONFIG_RTC_INT_PORT == &GpioB) {
-            IFS1CLR       = CHANGE_INT_GPIOB;
-        } else if (CONFIG_RTC_INT_PORT == &GpioC) {
-            IFS1CLR       = CHANGE_INT_GPIOC;
+            rtcRead(REG_CONTROL_INT_FLAG, &reg);
+            reg &= ~CONTROL_INT_FLAG_TF;
+            rtcWrite(REG_CONTROL_INT_FLAG, reg);
+            rtcFetchTime(&CurrentTime);
+
+            if (CONFIG_RTC_INT_PORT == &GpioA) {
+                IFS1CLR = CHANGE_INT_GPIOA;
+            } else if (CONFIG_RTC_INT_PORT == &GpioB) {
+                IFS1CLR = CHANGE_INT_GPIOB;
+            } else if (CONFIG_RTC_INT_PORT == &GpioC) {
+                IFS1CLR = CHANGE_INT_GPIOC;
+            }
         }
     }
 }
