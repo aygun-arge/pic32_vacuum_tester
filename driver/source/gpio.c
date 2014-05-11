@@ -65,7 +65,7 @@ const struct gpio GpioC = {
 
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
-static void initPort(struct gpio * gpio) {
+static void initPort(const struct gpio * gpio) {
     *(gpio->port)     = 0u;
     *(gpio->tris)     = 0xffffffffu;
     *(gpio->lat)      = 0u;
