@@ -5,52 +5,93 @@
 #include "app_time.h"
 #include "driver/rtc.h"
 
-#define CONFIG_VALID_TIME_FORMAT        "%02d:%02d"
-#define CONFIG_INVALID_TIME_FORMAT      "--:--"
-
-#define CONFIG_VALID_DATE_FORMAT        "%02d-%02d-%04d"
-#define CONFIG_INVALID_DATE_FORMAT      "==-==-===="
+#define APPTIME_AM_STRING               "AM"
+#define APPTIME_PM_STRING               "PM"
 
 esError appTimeGet(struct appTime * time) {
-    (void)time;
+    esError             error;
+    struct rtcTime      rtcTime;
 
-    return (ES_ERROR_NOT_IMPLEMENTED);
+    error = rtcGetTime(&rtcTime);
+    time->year  = rtcTime.year;
+    time->month = rtcTime.month;
+    time->day   = rtcTime.day;
+    time->hour  = rtcTime.hour;
+
+    if (time->hour >= 12) {
+        time->daySelector = APPTIME_PM;
+
+        if (time->hour >= 13) {
+            time->hour -= 12;
+        }
+    } else {
+        time->daySelector = APPTIME_AM;
+
+        if (time->hour == 0) {
+            time->hour = 12;
+        }
+    }
+    time->minute  = rtcTime.minute;
+    time->seconds = rtcTime.second;
+
+    return (error);
 }
 
 esError appTimeSet(const struct appTime * time) {
-    (void)time;
+    esError             error;
+    struct rtcTime      rtcTime;
 
-    return (ES_ERROR_NOT_IMPLEMENTED);
+    rtcTime.year  = time->year;
+    rtcTime.month = time->month;
+    rtcTime.day   = time->day;
+    rtcTime.hour  = time->hour;
+
+    if (time->daySelector == APPTIME_AM) {
+
+        if (rtcTime.hour == 12) {
+            rtcTime.hour = 0;
+        }
+    } else {
+
+        if (rtcTime.hour != 12) {
+            rtcTime.hour += 12;
+        }
+    }
+    rtcTime.minute = time->minute;
+    rtcTime.second = time->seconds;
+
+    return (rtcSetTime(&rtcTime));
 }
 
-uint32_t snprintRtcTime(char * buffer) {
+size_t snprintRtcDaySelector(const struct appTime * time, char * buffer) {
 
-    if (isRtcActive()) {
-        struct rtcTime  time;
+    static const char * daySelector[] = {
+        [APPTIME_AM] = APPTIME_AM_STRING,
+        [APPTIME_PM] = APPTIME_PM_STRING
+    };
+    static const size_t daySelectorSize[] = {
+        [APPTIME_AM] = sizeof(APPTIME_AM_STRING),
+        [APPTIME_PM] = sizeof(APPTIME_PM_STRING)
+    };
+    strcpy(buffer, daySelector[time->daySelector]);
 
-        rtcGetTime(&time);
-        snprintf(buffer, sizeof(CONFIG_VALID_TIME_FORMAT), CONFIG_VALID_TIME_FORMAT, time.hour, time.minute);
-
-        return (sizeof(CONFIG_VALID_TIME_FORMAT));
-    } else {
-        memcpy(buffer, CONFIG_INVALID_TIME_FORMAT, sizeof(CONFIG_INVALID_TIME_FORMAT));
-
-        return (sizeof(CONFIG_INVALID_TIME_FORMAT));
-    }
+    return (daySelectorSize[time->daySelector]);
 }
 
-uint32_t snprintRtcDate(char * buffer) {
+size_t snprintRtcTime(const struct appTime * time, char * buffer) {
+    size_t              length;
 
-    if (isRtcActive()) {
-        struct rtcTime  time;
+    length = 0;
+    sprintf(&buffer[length], "%2d:%2d ", time->hour, time->minute);
+    length += 6;
+    length += snprintRtcDaySelector(time, &buffer[length]);
 
-        rtcGetTime(&time);
-        snprintf(buffer, sizeof(CONFIG_VALID_DATE_FORMAT), CONFIG_VALID_DATE_FORMAT, time.month, time.day, time.year);
+    return (length);
+}
 
-        return (sizeof(CONFIG_VALID_DATE_FORMAT));
-    } else {
-        memcpy(buffer, CONFIG_INVALID_DATE_FORMAT, sizeof(CONFIG_INVALID_DATE_FORMAT));
+size_t snprintRtcDate(const struct appTime * time, char * buffer) {
 
-        return (sizeof(CONFIG_INVALID_DATE_FORMAT));
-    }
+    sprintf(buffer, "%2d-%2d-%4d", time->month, time->day, time->year);
+
+    return (11);
 }
