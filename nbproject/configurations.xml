@@ -26,6 +26,7 @@
         <itemPath>application/include/app_timer.h</itemPath>
         <itemPath>application/include/app_data_log.h</itemPath>
         <itemPath>application/include/app_user.h</itemPath>
+        <itemPath>application/include/app_gpu.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -43,6 +44,7 @@
         <itemPath>application/source/app_timer.c</itemPath>
         <itemPath>application/source/app_data_log.c</itemPath>
         <itemPath>application/source/app_user.c</itemPath>
+        <itemPath>application/source/app_gpu.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
@@ -411,6 +413,7 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
@@ -728,6 +731,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -996,6 +1001,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1084,6 +1091,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1262,6 +1271,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1350,6 +1361,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1438,6 +1451,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1526,6 +1541,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1614,6 +1631,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
@@ -1702,6 +1721,8 @@
           <property key="use-iar" value="false"/>
           <property key="use-indirect-calls" value="false"/>
         </C32>
+        <C32-AS>
+        </C32-AS>
         <C32-LD>
           <property key="additional-options-use-response-files" value="false"/>
           <property key="enable-check-sections" value="false"/>
