@@ -262,6 +262,7 @@ void initRtcDriver(void) {
     }
     *(CONFIG_RTC_INT_PORT)->tris   |= (0x1u << CONFIG_RTC_INT_PIN);
     *(CONFIG_RTC_INT_PORT)->change |= (0x1u << CONFIG_RTC_INT_PIN);
+    *(CONFIG_RTC_INT_PORT)->pullup |= (0x1u << CONFIG_RTC_INT_PIN);
 
     /* NOTE: Optimizations will remove conditionals
      */
