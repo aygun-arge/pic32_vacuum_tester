@@ -575,6 +575,8 @@ ft_void_t Ft_Gpu_Hal_WrMemFromFlash(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,
 	}
 #endif
 #ifdef PIC32_PLATFORM
+    (void)SizeTransfered;
+
     while (length--) {
         Ft_Gpu_Hal_Transfer8(host, *buffer);
 	    buffer++;
@@ -603,6 +605,8 @@ ft_void_t Ft_Gpu_Hal_WrMem(Ft_Gpu_Hal_Context_t *host,ft_uint32_t addr,const ft_
 	}
 #endif
 #ifdef PIC32_PLATFORM
+    (void)SizeTransfered;
+    
     while (length--) {
         Ft_Gpu_Hal_Transfer8(host,*buffer);
 	    buffer++;
