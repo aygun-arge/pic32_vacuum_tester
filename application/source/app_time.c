@@ -38,7 +38,6 @@ esError appTimeGet(struct appTime * time) {
 }
 
 esError appTimeSet(const struct appTime * time) {
-    esError             error;
     struct rtcTime      rtcTime;
 
     rtcTime.year  = time->year;
