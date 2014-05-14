@@ -27,6 +27,7 @@
         <itemPath>application/include/app_data_log.h</itemPath>
         <itemPath>application/include/app_user.h</itemPath>
         <itemPath>application/include/app_gpu.h</itemPath>
+        <itemPath>application/include/epa_touch.h</itemPath>
       </logicalFolder>
       <logicalFolder name="source" displayName="source" projectFiles="true">
         <itemPath>application/source/main.c</itemPath>
@@ -45,6 +46,7 @@
         <itemPath>application/source/app_data_log.c</itemPath>
         <itemPath>application/source/app_user.c</itemPath>
         <itemPath>application/source/app_gpu.c</itemPath>
+        <itemPath>application/source/epa_touch.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="driver" displayName="driver" projectFiles="true">
