@@ -11,6 +11,8 @@
 
 /*=========================================================  INCLUDE FILES  ==*/
 
+#include <stdint.h>
+
 /*===============================================================  MACRO's  ==*/
 /*------------------------------------------------------  C++ extern begin  --*/
 #ifdef	__cplusplus
@@ -44,6 +46,10 @@ extern const struct gpio GpioC;
 
 void initGpioDriver(
     void);
+
+void gpioChangeSetHandler(const struct gpio * gpio, uint32_t pin, void (* handler)(void));
+void gpioChangeEnableHandler(const struct gpio * gpio);
+void gpioChangeDisableHandler(const struct gpio * gpio);
 
 /*--------------------------------------------------------  C++ extern end  --*/
 #ifdef __cplusplus

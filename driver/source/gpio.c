@@ -8,14 +8,34 @@
 
 /*=========================================================  INCLUDE FILES  ==*/
 
+#include "arch/intr.h"
 #include <xc.h>
+#include <sys/attribs.h>
 
 #include "driver/gpio.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
+
+#define CNCON_ON                        (0x1u << 15)
+
+#define CHANGE_INT_GPIOA                (0x1u << 13)
+#define CHANGE_PRIO_GPIOA               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOA            (0x3u << 16)
+
+#define CHANGE_INT_GPIOB                (0x1u << 14)
+#define CHANGE_PRIO_GPIOB               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOB            (0x3u << 16)
+
+#define CHANGE_INT_GPIOC                (0x1u << 15)
+#define CHANGE_PRIO_GPIOC               (0x7u << 18)
+#define CHANGE_SUBPRIO_GPIOC            (0x3u << 16)
+
 /*======================================================  LOCAL DATA TYPES  ==*/
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
 /*=======================================================  LOCAL VARIABLES  ==*/
+
+static void (* Handler[3])(void);
+
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 const struct gpio GpioA = {
@@ -91,8 +111,94 @@ void initGpioDriver(
 #endif
 }
 
+void gpioChangeSetHandler(const struct gpio * gpio, uint32_t pin, void (* handler)(void)) {
+    *(gpio->change) |= (0x1u << pin);
+
+    if (gpio == &GpioA) {
+        Handler[0]    = handler;
+        CNCONA       |= CNCON_ON;
+        IEC1CLR       = CHANGE_INT_GPIOA;
+        IFS1CLR       = CHANGE_INT_GPIOA;
+        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+        IPC8bits.CNIS = 0;
+        IEC1SET       = CHANGE_INT_GPIOA;
+    } else if (gpio == &GpioB) {
+        Handler[1]    = handler;
+        CNCONB       |= CNCON_ON;
+        IEC1CLR       = CHANGE_INT_GPIOB;
+        IFS1CLR       = CHANGE_INT_GPIOB;
+        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+        IPC8bits.CNIS = 0;
+        IEC1SET       = CHANGE_INT_GPIOB;
+    } else if (gpio == &GpioC) {
+        Handler[2]    = handler;
+        CNCONC       |= CNCON_ON;
+        IEC1CLR       = CHANGE_INT_GPIOC;
+        IFS1CLR       = CHANGE_INT_GPIOC;
+        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+        IPC8bits.CNIS = 0;
+        IEC1SET       = CHANGE_INT_GPIOC;
+    }
+}
+
+void gpioChangeEnableHandler(const struct gpio * gpio) {
+
+    if (gpio == &GpioA) {
+        IEC1SET = CHANGE_INT_GPIOA;
+    } else if (gpio == &GpioB) {
+        IEC1SET = CHANGE_INT_GPIOB;
+    } else if (gpio == &GpioC) {
+        IEC1SET = CHANGE_INT_GPIOC;
+    }
+}
+
+void gpioChangeDisableHandler(const struct gpio * gpio) {
+
+    if (gpio == &GpioA) {
+        IEC1CLR = CHANGE_INT_GPIOA;
+    } else if (gpio == &GpioB) {
+        IEC1CLR = CHANGE_INT_GPIOB;
+    } else if (gpio == &GpioC) {
+        IEC1CLR = CHANGE_INT_GPIOC;
+    }
+}
+
+void __ISR(_CHANGE_NOTICE_VECTOR) changeNotice(void) {
+    volatile uint32_t   port;
+    uint32_t            intFlag;
+
+    intFlag = IEC1 & IFS1;
+    port = *GpioA.port;
+
+    if (intFlag & CHANGE_INT_GPIOA) {
+
+        if (Handler[0] != NULL) {
+            Handler[0]();
+        }
+        IFS1CLR = CHANGE_INT_GPIOA;
+    }
+    port = *GpioB.port;
+
+    if (intFlag & CHANGE_INT_GPIOB) {
+
+        if (Handler[1] != NULL) {
+            Handler[1]();
+        }
+        IFS1CLR = CHANGE_INT_GPIOB;
+    }
+    port = *GpioC.port;
+
+    if (intFlag & CHANGE_INT_GPIOC) {
+
+        if (Handler[2] != NULL) {
+            Handler[2]();
+        }
+        IFS1CLR = CHANGE_INT_GPIOC;
+    }
+}
+
 /*================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/
 /** @endcond *//** @} *//******************************************************
- * END of uart.c
+ * END of gpio.c
  ******************************************************************************/
 
