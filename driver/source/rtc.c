@@ -18,18 +18,6 @@
 #define CONFIG_RTC_INT_PORT             &GpioA
 #define CONFIG_RTC_INT_PIN              7
 
-#define CHANGE_INT_GPIOA                (0x1u << 13)
-#define CHANGE_PRIO_GPIOA               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOA            (0x3u << 16)
-
-#define CHANGE_INT_GPIOB                (0x1u << 14)
-#define CHANGE_PRIO_GPIOB               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOB            (0x3u << 16)
-
-#define CHANGE_INT_GPIOC                (0x1u << 15)
-#define CHANGE_PRIO_GPIOC               (0x7u << 18)
-#define CHANGE_SUBPRIO_GPIOC            (0x3u << 16)
-
 #define REG_CONTROL_1                   0x00
 #define REG_CONTROL_INT                 0x01
 #define REG_CONTROL_INT_FLAG            0x02
@@ -112,7 +100,6 @@ static const ES_MODULE_INFO_CREATE("RTC", "Real Time Clock", "Nenad Radulovic");
 static struct i2cHandle RtcI2c;
 
 static struct rtcTime   CurrentTime;
-static bool             IsCurrentTimeValid;
 
 static esError rtcReadArray(uint8_t address, uint8_t * data, size_t size) {
     ES_REQUIRE(ES_API_RANGE, size < 8);
@@ -228,6 +215,37 @@ FAILURE:
     return (ES_ERROR_DEVICE_FAIL);
 }
 
+static esError rtcPutTime(const struct rtcTime * time) {
+    struct rtcTimeRegisters regs;
+    esError             error;
+
+    regs.years   = binToBcd(time->year - 2000u);
+    regs.months  = binToBcd(time->month);
+    regs.days    = binToBcd(time->day);
+    regs.hours   = binToBcd(time->hour);
+    regs.minutes = binToBcd(time->minute);
+    regs.seconds = binToBcd(time->second);
+
+    error = rtcWriteArray(REG_SECONDS, (const uint8_t *)&regs, sizeof(regs));
+
+    if (error != ES_ERROR_NONE) {
+        goto FAILURE;
+    }
+
+    return (ES_ERROR_NONE);
+FAILURE:
+
+    return (ES_ERROR_DEVICE_FAIL);
+}
+
+static void rtcTick(void) {
+
+    if ((*(CONFIG_RTC_INT_PORT)->port & (0x1u << CONFIG_RTC_INT_PIN)) == 0) {
+        rtcWrite(REG_CONTROL_INT_FLAG, 0);
+        rtcFetchTime(&CurrentTime);
+    }
+}
+
 void initRtcDriver(void) {
     uint8_t             reg;
     struct rtcTimeRegisters regs;
@@ -260,27 +278,10 @@ void initRtcDriver(void) {
             goto FAILURE;
         }
     }
-    *(CONFIG_RTC_INT_PORT)->tris   |= (0x1u << CONFIG_RTC_INT_PIN);
-    *(CONFIG_RTC_INT_PORT)->change |= (0x1u << CONFIG_RTC_INT_PIN);
-    *(CONFIG_RTC_INT_PORT)->pullup |= (0x1u << CONFIG_RTC_INT_PIN);
+    memset(&regs, 0, sizeof(regs));
 
-    /* NOTE: Optimizations will remove conditionals
-     */
-    if (CONFIG_RTC_INT_PORT == &GpioA) {
-        IFS1CLR       = CHANGE_INT_GPIOA;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOA;
-    } else if (CONFIG_RTC_INT_PORT == &GpioB) {
-        IFS1CLR       = CHANGE_INT_GPIOB;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOB;
-    } else if (CONFIG_RTC_INT_PORT == &GpioC) {
-        IFS1CLR       = CHANGE_INT_GPIOC;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOC;
+    if (rtcWriteArray(REG_ALARM_SECONDS, (const uint8_t *)&regs, sizeof(regs)) != ES_ERROR_NONE) {
+        goto FAILURE;
     }
     
     if (rtcWrite(REG_CONTROL_INT, 0) != ES_ERROR_NONE) {
@@ -309,15 +310,7 @@ void initRtcDriver(void) {
     if (rtcWrite(REG_CONTROL_1, reg) != ES_ERROR_NONE) {
         goto FAILURE;
     }
-    memset(&regs, 0, sizeof(regs));
 
-    if (rtcWriteArray(REG_ALARM_SECONDS, (const uint8_t *)&regs, sizeof(regs)) != ES_ERROR_NONE) {
-        goto FAILURE;
-    }
-
-    if (rtcFetchTime(&CurrentTime) != ES_ERROR_NONE) {
-        goto FAILURE;
-    }
 
     if (rtcWrite(REG_CONTROL_INT_FLAG, 0) != ES_ERROR_NONE) {
         goto FAILURE;
@@ -326,6 +319,8 @@ void initRtcDriver(void) {
     if (rtcWrite(REG_CONTROL_INT, CONTROL_INT_TIE) != ES_ERROR_NONE) {
         goto FAILURE;
     }
+    *(CONFIG_RTC_INT_PORT)->tris   |= (0x1u << CONFIG_RTC_INT_PIN);
+    gpioChangeSetHandler(CONFIG_RTC_INT_PORT, CONFIG_RTC_INT_PIN, rtcTick);
 
     return;
 FAILURE:
@@ -342,76 +337,24 @@ bool isRtcActive(void) {
 }
 
 esError rtcSetTime(const struct rtcTime * time) {
-    struct rtcTimeRegisters regs;
-
-    regs.years   = binToBcd(time->year - 2000u);
-    regs.months  = binToBcd(time->month);
-    regs.days    = binToBcd(time->day);
-    regs.hours   = binToBcd(time->hour);
-    regs.minutes = binToBcd(time->minute);
-    regs.seconds = binToBcd(time->second);
-
-    if (rtcWriteArray(REG_SECONDS, (const uint8_t *)&regs, sizeof(regs)) != ES_ERROR_NONE) {
-        goto FAILURE;
-    }
-
-    return (ES_ERROR_NONE);
-FAILURE:
-
-    return (ES_ERROR_DEVICE_FAIL);
-}
-
-esError rtcGetTime(struct rtcTime * time) {
     esError             error;
 
-    if (CONFIG_RTC_INT_PORT == &GpioA) {
-        IEC1CLR = CHANGE_INT_GPIOA;
-    } else if (CONFIG_RTC_INT_PORT == &GpioB) {
-        IEC1CLR = CHANGE_INT_GPIOB;
-    } else if (CONFIG_RTC_INT_PORT == &GpioC) {
-        IEC1CLR = CHANGE_INT_GPIOC;
-    }
-    memcpy(time, &CurrentTime, sizeof(*time));
+    gpioChangeDisableHandler(CONFIG_RTC_INT_PORT);
+    error = rtcPutTime(time);
 
-    if (IsCurrentTimeValid) {
-        error = ES_ERROR_NONE;
-    } else {
-        error = ES_ERROR_DEVICE_FAIL;
+    if (error == ES_ERROR_NONE) {
+        memcpy(&CurrentTime, time, sizeof(CurrentTime));
     }
-
-    if (CONFIG_RTC_INT_PORT == &GpioA) {
-        IEC1SET = CHANGE_INT_GPIOA;
-    } else if (CONFIG_RTC_INT_PORT == &GpioB) {
-        IEC1SET = CHANGE_INT_GPIOB;
-    } else if (CONFIG_RTC_INT_PORT == &GpioC) {
-        IEC1SET = CHANGE_INT_GPIOC;
-    }
+    gpioChangeEnableHandler(CONFIG_RTC_INT_PORT);
 
     return (error);
 }
 
-void __ISR(_CHANGE_NOTICE_VECTOR) changeNoticeHandler(void) {
+esError rtcGetTime(struct rtcTime * time) {
+    gpioChangeDisableHandler(CONFIG_RTC_INT_PORT);
+    memcpy(time, &CurrentTime, sizeof(*time));
+    gpioChangeEnableHandler(CONFIG_RTC_INT_PORT);
 
-    if (*(CONFIG_RTC_INT_PORT)->status & (0x1u << CONFIG_RTC_INT_PIN)) {
-        uint32_t        port;
-
-        port = *(CONFIG_RTC_INT_PORT)->port;
-
-        if (port & (0x1u << CONFIG_RTC_INT_PIN)) {
-            uint8_t     reg;
-
-            rtcRead(REG_CONTROL_INT_FLAG, &reg);
-            reg &= ~CONTROL_INT_FLAG_TF;
-            rtcWrite(REG_CONTROL_INT_FLAG, reg);
-            rtcFetchTime(&CurrentTime);
-
-            if (CONFIG_RTC_INT_PORT == &GpioA) {
-                IFS1CLR = CHANGE_INT_GPIOA;
-            } else if (CONFIG_RTC_INT_PORT == &GpioB) {
-                IFS1CLR = CHANGE_INT_GPIOB;
-            } else if (CONFIG_RTC_INT_PORT == &GpioC) {
-                IFS1CLR = CHANGE_INT_GPIOC;
-            }
-        }
-    }
+    return (ES_ERROR_NONE);
 }
+
