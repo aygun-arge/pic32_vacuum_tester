@@ -70,7 +70,7 @@
 
 #define GUI_TABLE(entry)                                                        \
     entry(stateInit,                TOP)                                        \
-    entry(stateWakeUpLcd,           TOP)                                        \
+    entry(stateWakeUpDisplay,       TOP)                                        \
     entry(stateMain,                TOP)                                        \
     entry(statePreTest,             TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
@@ -206,7 +206,7 @@ static void screenExportInsert(void);
 static void screenSettings(void);
 
 static esAction stateInit               (struct wspace *, const esEvent *);
-static esAction stateWakeUpLcd          (struct wspace *, const esEvent *);
+static esAction stateWakeUpDisplay          (struct wspace *, const esEvent *);
 static esAction stateWelcome            (struct wspace *, const esEvent *);
 static esAction stateMain               (struct wspace *, const esEvent *);
 static esAction statePreTest            (struct wspace *, const esEvent *);
@@ -720,10 +720,8 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
             wspace->state.wakeUpLcd.retry = 100u;
             appTimerInit(&wspace->timeout);
             appTimerInit(&wspace->refresh);
-            gpuInitEarly();
-            
 
-            return (ES_STATE_TRANSITION(stateWakeUpLcd));
+            return (ES_STATE_TRANSITION(stateWakeUpDisplay));
         }
         default: {
 
@@ -732,12 +730,12 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
+static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_INIT : {
 
             if (isGpuReady()) {
-                gpuInitLate();
+                gpuSetupDisplay();
 
                 return (ES_STATE_TRANSITION(stateWelcome));
             } else if (wspace->state.wakeUpLcd.retry != 0u) {
@@ -755,7 +753,7 @@ static esAction stateWakeUpLcd(struct wspace * wspace, const esEvent * event) {
         }
         case WAKEUP_TIMEOUT_: {
 
-            return (ES_STATE_TRANSITION(stateWakeUpLcd));
+            return (ES_STATE_TRANSITION(stateWakeUpDisplay));
         }
         case ES_EXIT: {
             appTimerCancel(&wspace->timeout);
