@@ -24,6 +24,7 @@
 #include "app_buzzer.h"
 #include "app_config.h"
 #include "app_storage.h"
+#include "app_gpu.h"
 
 #include "base/base.h"
 #include "vtimer/vtimer.h"
@@ -89,7 +90,8 @@ int main(void) {
     initUsbModule();
     initPSensorModule();
     initMotorModule();
-    initStorage();
+    initStorageModule();
+    initGpuModule();
 
     /*--  Start up tone  -----------------------------------------------------*/
     //buzzerTone(20);
@@ -122,7 +124,8 @@ int main(void) {
     esEdsInit();
 
     /*--  Create EPAs  -------------------------------------------------------*/
-    esEpaCreate(&GuiEpa,     &GuiSm,     &StaticMem, &Gui);
+    ES_ENSURE(esEpaCreate(&GuiEpa,     &GuiSm,     &StaticMem, &Gui));
+    ES_ENSURE(esEpaCreate(&TouchEpa,   &TouchSm,   &StaticMem, &Touch));
     
     /*--  Set application idle routine  --------------------------------------*/
     esEdsSetIdle(nativeFsm);

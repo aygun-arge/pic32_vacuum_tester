@@ -16,7 +16,7 @@ extern "C" {
 #define NV_STORAGE_APPCONFIG_ID         0
 #define NV_STORAGE_APPCONFIG_SIZE       4096
 
-#define NV_STORAGE_UI_NAME              "ui"
+#define NV_STORAGE_UI_NAME              "uitouch"
 #define NV_STORAGE_UI_ID                1
 #define NV_STORAGE_UI_SIZE              4096
 

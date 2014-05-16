@@ -20,6 +20,26 @@
 extern "C" {
 #endif
 
+enum touchEventsId {
+    TOUCH_ENABLE        = CONFIG_EPA_TOUCH_EVENT_BASE,
+    TOUCH_DISABLE,
+    TOUCH_STATUS,
+    TOUCH_INITIALIZE,
+    TOUCH_CALIBRATE
+};
+
+enum touchStatus {
+    TOUCH_NOT_INITIALIZED,
+    TOUCH_NOT_CALIBRATED,
+    TOUCH_INITIALIZED,
+    TOUCH_CALIBRATED
+};
+
+struct touchStatusEvent {
+    esEvent             event;
+    enum touchStatus    status;
+};
+
 extern const struct esEpaDefine TouchEpa;
 extern const struct esSmDefine  TouchSm;
 extern struct esEpa *           Touch;
