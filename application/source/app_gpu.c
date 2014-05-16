@@ -22,7 +22,7 @@
 
 Ft_Gpu_Hal_Context_t Gpu;
 
-void gpuInitEarly(void) {
+void initGpuModule(void) {
     static struct spiHandle     spi;
     Ft_Gpu_HalInit_t halinit;                       /* Not used in this port */
 
@@ -50,7 +50,7 @@ void gpuInitEarly(void) {
     Ft_Gpu_HostCommand(&Gpu, FT_GPU_CORE_RESET);
 }
 
-void gpuInitLate(void) {
+void gpuSetupDisplay(void) {
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO_DIR, 0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO_DIR));
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_GPIO,     0x83 | Ft_Gpu_Hal_Rd8(&Gpu, REG_GPIO));
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_PWM_DUTY, 0);                                     /* Completely turn off LCD, it will be lit at later stage   */
@@ -67,11 +67,6 @@ void gpuInitLate(void) {
 
     Ft_Gpu_Hal_Wr16(&Gpu, REG_HSIZE,    DISP_WIDTH);
     Ft_Gpu_Hal_Wr16(&Gpu, REG_VSIZE,    DISP_HEIGHT);
-
-    /* Touch configuration - configure the resistance value to 1200 - this value
-     * is specific to customer requirement and derived by experiment.
-     */
-    Ft_Gpu_Hal_Wr16(&Gpu, REG_TOUCH_RZTHRESH, 1200);
     Ft_Gpu_Hal_Wr8(&Gpu,  REG_PCLK,     DISP_PCLK);                             /* After this display is visible on the LCD                 */
 }
 
@@ -141,3 +136,26 @@ void gpuFadeOff(void) {
     Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, 128);
 }
 
+void gpuGetDefaultTouch(struct gpuTouchData * touchData) {
+    touchData->threshold = 1200u;
+}
+
+void gpuSetTouch(const struct gpuTouchData * touchData) {
+    Ft_Gpu_Hal_Wr16(&Gpu, REG_TOUCH_RZTHRESH,    touchData->threshold);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_A, touchData->a);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_B, touchData->b);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_C, touchData->c);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_D, touchData->d);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_E, touchData->e);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_F, touchData->f);
+}
+
+void gpuGetTouch(struct gpuTouchData * touchData) {
+    touchData->threshold = Ft_Gpu_Hal_Rd16(&Gpu, REG_TOUCH_RZTHRESH);
+    touchData->a         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_A);
+    touchData->b         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_B);
+    touchData->c         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_C);
+    touchData->d         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_D);
+    touchData->e         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_E);
+    touchData->f         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_F);
+}

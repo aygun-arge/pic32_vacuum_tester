@@ -8,6 +8,7 @@
 #ifndef APP_GPU_H
 #define	APP_GPU_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "FT_Platform.h"
@@ -21,10 +22,20 @@
 extern "C" {
 #endif
 
+struct gpuTouchData {
+    uint16_t            threshold;
+    uint32_t            a;
+    uint32_t            b;
+    uint32_t            c;
+    uint32_t            d;
+    uint32_t            e;
+    uint32_t            f;
+};
+
 extern Ft_Gpu_Hal_Context_t Gpu;
 
-void gpuInitEarly(void);
-void gpuInitLate(void);
+void initGpuModule(void);
+void gpuSetupDisplay(void);
 bool isGpuReady(void);
 void gpuBegin(void);
 void gpuEnd(void);
@@ -32,6 +43,9 @@ uint8_t gpuGetKey(void);
 void gpuFadeIn(void);
 void gpuFadeOut(void);
 void gpuFadeOff(void);
+void gpuGetDefaultTouch(struct gpuTouchData * touchData);
+void gpuSetTouch(const struct gpuTouchData * touchData);
+void gpuGetTouch(struct gpuTouchData * touchData);
 
 #ifdef	__cplusplus
 }
