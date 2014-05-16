@@ -25,19 +25,19 @@ struct storageTableEntry {
 
 struct storageSpace;
 
-void initStorage(void);
+void initStorageModule(void);
 esError storageRegisterTable(const struct storageTableEntry * entry);
-esError storageOpen(uint32_t id, struct storageSpace ** space);
+esError storageOpenSpace(uint32_t id, struct storageSpace ** space);
 esError storageClearSpace(struct storageSpace * space);
 esError storageRead(
     struct storageSpace * space,
-    uint8_t *           buffer,
+    void *           buffer,
     size_t              size,
     size_t *            read);
 esError storageSetPos(struct storageSpace * space, uint32_t pos);
 esError storageWrite(
     struct storageSpace * space,
-    const uint8_t *     buffer,
+    const void *     buffer,
     size_t              size,
     size_t *            written);
 esError storageGetSize(struct storageSpace * space, size_t * size);

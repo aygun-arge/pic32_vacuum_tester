@@ -91,7 +91,7 @@ static void initAllocationTable(struct allocationTable * table) {
     }
 }
 
-void initStorage(void) {
+void initStorageModule(void) {
 
     if (loadAllocationTable(&AllocationTable) != ES_ERROR_NONE) {
 
@@ -202,6 +202,7 @@ esError storageOpenSpace(uint32_t id, struct storageSpace ** space) {
     while (tableId < CONFIG_MAX_STORAGE_ENTRIES) {
         if (AllocationTable.space[tableId].id == id) {
             *space = &AllocationTable.space[tableId];
+            storageSetPos(*space, 0);
 
             return (ES_ERROR_NONE);
         }
@@ -243,7 +244,7 @@ esError storageClearSpace(struct storageSpace * space) {
 
 esError storageRead(
     struct storageSpace * space,
-    uint8_t *           buffer,
+    void *              buffer,
     size_t              size,
     size_t *            read) {
     esError             error;
@@ -256,7 +257,7 @@ esError storageRead(
 
         return (ES_ERROR_NOT_FOUND);
     }
-    error = flashRead(space->phy.base + space->pos, buffer, size);
+    error = flashRead(space->phy.base + space->pos, (uint8_t *)buffer, size);
 
     if (error != ES_ERROR_NONE) {
         *read = 0u;
@@ -283,15 +284,20 @@ esError storageSetPos(struct storageSpace * space, uint32_t pos) {
 
 esError storageWrite(
     struct storageSpace * space,
-    const uint8_t *     buffer,
+    const void *        buffer,
     size_t              size,
     size_t *            written) {
+    esError             error;
 
     if (size > (space->size - space->head)) {
         size = space->size - space->head;
     }
-    
-    if (flashWrite(space->phy.base + space->head, buffer, size) != ES_ERROR_NONE) {
+    error = flashWrite(
+        space->phy.base + space->head,
+        (const uint8_t *)buffer,
+        size);
+
+    if (error != ES_ERROR_NONE) {
         *written = 0u;
 
         return (ES_ERROR_DEVICE_BUSY);
