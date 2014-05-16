@@ -27,7 +27,7 @@ esError appDataLogInit(void) {
     size_t              nBytes;
     esError             error;
 
-    error = storageOpen(NV_STORAGE_DATA_LOG_ID, &Storage);
+    error = storageOpenSpace(NV_STORAGE_DATA_LOG_ID, &Storage);
 
     if (error != ES_ERROR_NONE) {
         /*
