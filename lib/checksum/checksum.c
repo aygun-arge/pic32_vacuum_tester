@@ -8,8 +8,8 @@ uint8_t checksumParity8(const void * buffer, size_t size) {
     sum = 0;
 
     for (byte = 0u; byte < size; byte++) {
-        sum += *(uint8_t *)buffer;
+        sum += ((uint8_t *)buffer)[byte];
     }
 
-    return (((sum ^ 0xffu) + 1u) & 0xffu);
+    return ((sum ^ 0xffu) + 1u);
 }

@@ -44,8 +44,11 @@ void gpuFadeIn(void);
 void gpuFadeOut(void);
 void gpuFadeOff(void);
 void gpuGetDefaultTouch(struct gpuTouchData * touchData);
-void gpuSetTouch(const struct gpuTouchData * touchData);
-void gpuGetTouch(struct gpuTouchData * touchData);
+void gpuSetTouchCalibration(const struct gpuTouchData * touchData);
+void gpuGetTouchCalibration(struct gpuTouchData * touchData);
+void gpuTouchEnable(void (* handler)(void));
+void gpuTouchDisable(void);
+uint8_t gpuGetTouchTag(void);
 
 #ifdef	__cplusplus
 }

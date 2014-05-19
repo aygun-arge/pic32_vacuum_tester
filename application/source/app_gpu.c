@@ -1,4 +1,5 @@
 
+#include "driver/gpio.h"
 #include "driver/spi.h"
 
 #include "app_gpu.h"
@@ -20,7 +21,16 @@
 
 #define GPU_ID                          0x7cu
 
+static void (* ClientHandler)(void);
+
 Ft_Gpu_Hal_Context_t Gpu;
+
+static void gpuInterruptHandler(void) {
+
+    if ((*(FT800_INT_PORT)->port & (0x1u << FT800_INT_PIN)) == 0) {
+        ClientHandler();
+    }
+}
 
 void initGpuModule(void) {
     static struct spiHandle     spi;
@@ -117,6 +127,11 @@ uint8_t gpuGetKey(void) {
 void gpuFadeIn(void) {
     uint32_t    pwm;
 
+    if (Ft_Gpu_Hal_Rd8(&Gpu, REG_PWM_DUTY) == 128) {
+
+        return;
+    }
+    
     for (pwm = 0; pwm <=128 ; pwm++) {
         Ft_Gpu_Hal_Wr8(&Gpu, REG_PWM_DUTY, pwm);
         Ft_Gpu_Hal_Sleep(8);//sleep for 2 ms
@@ -140,7 +155,7 @@ void gpuGetDefaultTouch(struct gpuTouchData * touchData) {
     touchData->threshold = 1200u;
 }
 
-void gpuSetTouch(const struct gpuTouchData * touchData) {
+void gpuSetTouchCalibration(const struct gpuTouchData * touchData) {
     Ft_Gpu_Hal_Wr16(&Gpu, REG_TOUCH_RZTHRESH,    touchData->threshold);
     Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_A, touchData->a);
     Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_B, touchData->b);
@@ -150,7 +165,7 @@ void gpuSetTouch(const struct gpuTouchData * touchData) {
     Ft_Gpu_Hal_Wr32(&Gpu, REG_TOUCH_TRANSFORM_F, touchData->f);
 }
 
-void gpuGetTouch(struct gpuTouchData * touchData) {
+void gpuGetTouchCalibration(struct gpuTouchData * touchData) {
     touchData->threshold = Ft_Gpu_Hal_Rd16(&Gpu, REG_TOUCH_RZTHRESH);
     touchData->a         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_A);
     touchData->b         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_B);
@@ -158,4 +173,24 @@ void gpuGetTouch(struct gpuTouchData * touchData) {
     touchData->d         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_D);
     touchData->e         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_E);
     touchData->f         = Ft_Gpu_Hal_Rd32(&Gpu, REG_TOUCH_TRANSFORM_F);
+}
+
+void gpuTouchEnable(void (* handler)(void)) {
+    ClientHandler = handler;
+    gpioChangeSetHandler(FT800_INT_PORT, FT800_INT_PIN, gpuInterruptHandler);
+    Ft_Gpu_Hal_Rd32(&Gpu, REG_INT_FLAGS);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_MASK, INT_TAG);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_EN, 0x1);
+}
+
+void gpuTouchDisable(void) {
+    gpioChangeDisableHandler(FT800_INT_PORT);
+    Ft_Gpu_Hal_Rd32(&Gpu, REG_INT_FLAGS);
+    Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_MASK, 0);
+}
+
+uint8_t gpuGetTouchTag(void) {
+    Ft_Gpu_Hal_Rd32(&Gpu, REG_INT_FLAGS);
+
+    return (Ft_Gpu_Hal_Rd8(&Gpu, REG_TOUCH_TAG));
 }

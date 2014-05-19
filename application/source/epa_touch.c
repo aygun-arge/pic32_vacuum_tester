@@ -27,6 +27,8 @@ enum touchLocalEventId {
 
 struct wspace {
     struct storageSpace * nvHandle;
+    esEpa *             client;
+    uint8_t             prevTag;
 };
 
 struct nvStorageData {
@@ -81,11 +83,11 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
 
     switch (event->id) {
 
-        case TOUCH_INITIALIZE : {
+        case EVT_TOUCH_INITIALIZE : {
             struct nvStorageData storageData;
             esEvent *   response;
             esError     error;
-            size_t      read;
+            size_t      transferred;
 
             error = storageOpenSpace(NV_STORAGE_UI_ID, &space->nvHandle);
 
@@ -96,29 +98,29 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
                 space->nvHandle,
                 &storageData,
                 sizeof(storageData),
-                &read);
+                &transferred);
 
             if ((error != ES_ERROR_NONE)        ||
-                (read != sizeof(storageData))   ||
+                (transferred != sizeof(storageData))   ||
                 (checksumParity8(&storageData, sizeof(storageData)) != 0u)) {
                 goto SPACE_FAILURE;
             }
             ES_ENSURE(error = esEventCreate(
                 sizeof(struct touchStatusEvent),
-                TOUCH_STATUS,
+                EVT_TOUCH_STATUS,
                 &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_INITIALIZED;
 
             if (error == ES_ERROR_NONE) {
                 ES_ENSURE(esEpaSendEvent(event->producer, response));
             }
-            gpuSetTouch(&storageData.gpuTouchData);
+            gpuSetTouchCalibration(&storageData.gpuTouchData);
 
             return (ES_STATE_HANDLED());
 SPACE_FAILURE:
             ES_ENSURE(error = esEventCreate(
                 sizeof(struct touchStatusEvent),
-                TOUCH_STATUS,
+                EVT_TOUCH_STATUS,
                 &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_NOT_INITIALIZED;
 
@@ -126,15 +128,22 @@ SPACE_FAILURE:
                 ES_ENSURE(esEpaSendEvent(event->producer, response));
             }
             gpuGetDefaultTouch(&storageData.gpuTouchData);
-            gpuSetTouch(&storageData.gpuTouchData);
+            gpuSetTouchCalibration(&storageData.gpuTouchData);
+            storageData.checksum = 0u;
+            storageData.checksum = checksumParity8(&storageData, sizeof(storageData));
+            storageClearSpace(space->nvHandle);
+            storageWrite(space->nvHandle, &storageData, sizeof(storageData), &transferred);
+            storageSync();
 
             return (ES_STATE_HANDLED());
         }
-        case TOUCH_CALIBRATE : {
+        case EVT_TOUCH_CALIBRATE : {
+            space->client = event->producer;
             
             return (ES_STATE_TRANSITION(stateCalibrate));
         }
-        case TOUCH_ENABLE : {
+        case EVT_TOUCH_ENABLE : {
+            space->client = event->producer;
 
             return (ES_STATE_TRANSITION(stateTouch));
         }
@@ -153,36 +162,37 @@ static esAction stateCalibrate(struct wspace * space, const esEvent * event) {
             esError     error;
             size_t      written;
 
-            gpuGetTouch(&storageData.gpuTouchData);
+            gpuGetTouchCalibration(&storageData.gpuTouchData);
             storageData.checksum = 0;
             storageData.checksum = checksumParity8(
                 &storageData,
                 sizeof(storageData));
-            storageSetPos(space->nvHandle, 0);
+            storageClearSpace(space->nvHandle);
             error = storageWrite(
                 space->nvHandle, 
                 &storageData, 
                 sizeof(storageData), 
                 &written);
+            storageSync();
             
             if (error != ES_ERROR_NONE) {
                 goto SPACE_FAILURE;
             }
             ES_ENSURE(error = esEventCreate(
                 sizeof(struct touchStatusEvent),
-                TOUCH_STATUS,
+                EVT_TOUCH_STATUS,
                 &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_CALIBRATED;
 
             if (error == ES_ERROR_NONE) {
-                ES_ENSURE(esEpaSendEvent(event->producer, response));
+                ES_ENSURE(esEpaSendEvent(space->client, response));
             }
 
             return (ES_STATE_TRANSITION(stateIdle));
 SPACE_FAILURE:
             ES_ENSURE(error = esEventCreate(
                 sizeof(struct touchStatusEvent),
-                TOUCH_STATUS,
+                EVT_TOUCH_STATUS,
                 &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_NOT_CALIBRATED;
 
@@ -204,20 +214,46 @@ static esAction stateTouch(struct wspace * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY : {
+            gpuTouchEnable(touchHandler);
+            space->prevTag = 0;
 
             return (ES_STATE_HANDLED());
         }
         case ES_EXIT : {
+            gpuTouchDisable();
 
             return (ES_STATE_HANDLED());
         }
-        case TOUCH_DISABLE : {
+        case EVT_TOUCH_DISABLE : {
 
             return (ES_STATE_TRANSITION(stateIdle));
         }
-        case TOUCH_CALIBRATE : {
+        case EVT_TOUCH_CALIBRATE : {
 
             return (ES_STATE_TRANSITION(stateCalibrate));
+        }
+        case TOUCH_DETECTED_ : {
+            uint8_t     tag;
+
+            tag = gpuGetTouchTag();
+
+            if ((space->prevTag != 0u) && (tag == 0u)) {
+                esError             error;
+                struct touchEvent * touchEvent;
+
+                ES_ENSURE(error = esEventCreate(
+                    sizeof(struct touchEvent),
+                    EVT_TOUCH_TAG,
+                    (esEvent **)&touchEvent));
+
+                if (error == ES_ERROR_NONE) {
+                    touchEvent->tag = tag;
+                    ES_ENSURE(esEpaSendEvent(space->client, (esEvent *)touchEvent));
+                }
+            }
+            space->prevTag = tag;
+
+            return (ES_STATE_HANDLED());
         }
         default : {
 

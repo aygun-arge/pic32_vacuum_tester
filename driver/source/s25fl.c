@@ -188,6 +188,7 @@ static void prepareWrite(void) {
 static void readData(uint32_t address, uint8_t * buffer, size_t size) {
     uint8_t             command[5];
 
+    readStatus();
     spiSSActivate(&FlashSpi);
     command[0] = CMD_4READ;
     command[1] = (address >> 24) & 0xffu;
@@ -197,6 +198,7 @@ static void readData(uint32_t address, uint8_t * buffer, size_t size) {
     spiWrite(&FlashSpi, command, sizeof(command));
     spiExchange(&FlashSpi, buffer,  size);
     spiSSDeactivate(&FlashSpi);
+    readStatus();
 }
 
 

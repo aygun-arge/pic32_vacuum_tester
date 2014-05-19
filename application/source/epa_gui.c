@@ -71,6 +71,7 @@
 #define GUI_TABLE(entry)                                                        \
     entry(stateInit,                TOP)                                        \
     entry(stateWakeUpDisplay,       TOP)                                        \
+    entry(stateSetupTouch,          TOP)                                        \
     entry(stateMain,                TOP)                                        \
     entry(statePreTest,             TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
@@ -206,7 +207,8 @@ static void screenExportInsert(void);
 static void screenSettings(void);
 
 static esAction stateInit               (struct wspace *, const esEvent *);
-static esAction stateWakeUpDisplay          (struct wspace *, const esEvent *);
+static esAction stateWakeUpDisplay      (struct wspace *, const esEvent *);
+static esAction stateSetupTouch         (struct wspace *, const esEvent *);
 static esAction stateWelcome            (struct wspace *, const esEvent *);
 static esAction stateMain               (struct wspace *, const esEvent *);
 static esAction statePreTest            (struct wspace *, const esEvent *);
@@ -357,14 +359,12 @@ static void screenSettingsClock(const union state * state) {
 }
 
 static void screenCalibrate(void) {
-    Ft_Gpu_CoCmd_Dlstart(&Gpu);
+    gpuBegin();
     constructBackground();
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
     Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,"Please tap on the dot");
     Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
-    Ft_Gpu_Hal_WrCmd32(&Gpu,DISPLAY());
-    Ft_Gpu_CoCmd_Swap(&Gpu);
-    Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
+    gpuEnd();
 }
 
 static void screenMain(struct screenMain * status) {
@@ -737,7 +737,7 @@ static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event
             if (isGpuReady()) {
                 gpuSetupDisplay();
 
-                return (ES_STATE_TRANSITION(stateWelcome));
+                return (ES_STATE_TRANSITION(stateSetupTouch));
             } else if (wspace->state.wakeUpLcd.retry != 0u) {
                 wspace->state.wakeUpLcd.retry--;
                 appTimerStart(
@@ -767,6 +767,54 @@ static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event
     }
 }
 
+static esAction stateSetupTouch(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            esEvent *   request;
+            esError     error;
+
+            ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_INITIALIZE, &request));
+
+            if (error == ES_ERROR_NONE) {
+                ES_ENSURE(esEpaSendEvent(Touch, request));
+            }
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_STATUS : {
+            const struct touchStatusEvent * touchStatusEvent;
+
+            touchStatusEvent = (const struct touchStatusEvent *)event;
+
+            if (touchStatusEvent->status == TOUCH_INITIALIZED) {
+
+                return (ES_STATE_TRANSITION(stateWelcome));
+            } else if (touchStatusEvent->status == TOUCH_NOT_INITIALIZED) {
+                esEvent * request;
+                esError   error;
+                gpuFadeIn();
+                screenCalibrate();
+                ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_CALIBRATE, &request));
+
+                if (error == ES_ERROR_NONE) {
+                    ES_ENSURE(esEpaSendEvent(Touch, request));
+                }
+            } else if (touchStatusEvent->status == TOUCH_NOT_CALIBRATED) {
+                /* Even if we fail the calibration continue and hope defaults will work */
+
+                return (ES_STATE_TRANSITION(stateWelcome));
+            }
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
 static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
@@ -780,7 +828,6 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case WELCOME_WAIT_: {
-            screenCalibrate();
             
             return (ES_STATE_TRANSITION(stateMain));
         }

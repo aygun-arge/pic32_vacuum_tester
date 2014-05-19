@@ -321,3 +321,8 @@ esError storageGetEmpty(struct storageSpace * space, size_t * empty) {
     
     return (ES_ERROR_NONE);
 }
+
+esError storageSync(void) {
+    
+    return (saveAllocationTable(&AllocationTable));
+}

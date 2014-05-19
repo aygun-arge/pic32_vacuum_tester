@@ -42,6 +42,7 @@ esError storageWrite(
     size_t *            written);
 esError storageGetSize(struct storageSpace * space, size_t * size);
 esError storageGetEmpty(struct storageSpace * space, size_t * empty);
+esError storageSync(void);
 
 #ifdef	__cplusplus
 }
