@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
 #define PATCH_LEVEL_POWER_STATUS_1      1
 
 #ifdef	__cplusplus

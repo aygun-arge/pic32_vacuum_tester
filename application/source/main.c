@@ -33,7 +33,6 @@
 
 #include "events.h"
 #include "epa_gui.h"
-#include "nv_storage.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -50,11 +49,6 @@ static void nativeFsm(void);
 static const ES_MODULE_INFO_CREATE("main", "main loop", "Nenad Radulovic");
 
 static uint8_t          StaticMemBuff[CONFIG_EDS_STATIC_SIZE];
-
-static const struct storageTableEntry nvStorage[] = {
-    NV_STORAGE_TABLE(EXPAND_STORAGE_ENTRY)
-    {0, 0, 0,}
-};
 
 /*======================================================  GLOBAL VARIABLES  ==*/
 
@@ -95,9 +89,6 @@ int main(void) {
 
     /*--  Start up tone  -----------------------------------------------------*/
     //buzzerTone(20);
-
-    /*--  Set up NV storage  -------------------------------------------------*/
-    storageRegisterTable(nvStorage);
 
     /*--  Set-up memories  ---------------------------------------------------*/
     esMemInit(

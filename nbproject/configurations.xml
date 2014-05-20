@@ -9,7 +9,6 @@
           <itemPath>application/include/config/HardwareProfile.h</itemPath>
           <itemPath>application/include/config/mcu_config.h</itemPath>
           <itemPath>application/include/config/software_profile.h</itemPath>
-          <itemPath>application/include/config/nv_storage.h</itemPath>
         </logicalFolder>
         <itemPath>application/include/app_config.h</itemPath>
         <itemPath>application/include/app_usb.h</itemPath>

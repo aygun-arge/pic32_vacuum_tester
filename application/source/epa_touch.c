@@ -4,7 +4,6 @@
 #include "epa_touch.h"
 #include "app_gpu.h"
 #include "app_storage.h"
-#include "config/nv_storage.h"
 #include "checksum/checksum.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
@@ -87,21 +86,15 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
             struct nvStorageData storageData;
             esEvent *   response;
             esError     error;
-            size_t      transferred;
 
-            error = storageOpenSpace(NV_STORAGE_UI_ID, &space->nvHandle);
+            error = storageRegisterEntry(sizeof(struct nvStorageData), &space->nvHandle);
 
             if (error != ES_ERROR_NONE) {
                 goto SPACE_FAILURE;
             }
-            error = storageRead(
-                space->nvHandle,
-                &storageData,
-                sizeof(storageData),
-                &transferred);
+            error = storageRead(space->nvHandle, &storageData);
 
             if ((error != ES_ERROR_NONE)        ||
-                (transferred != sizeof(storageData))   ||
                 (checksumParity8(&storageData, sizeof(storageData)) != 0u)) {
                 goto SPACE_FAILURE;
             }
@@ -131,9 +124,7 @@ SPACE_FAILURE:
             gpuSetTouchCalibration(&storageData.gpuTouchData);
             storageData.checksum = 0u;
             storageData.checksum = checksumParity8(&storageData, sizeof(storageData));
-            storageClearSpace(space->nvHandle);
-            storageWrite(space->nvHandle, &storageData, sizeof(storageData), &transferred);
-            storageSync();
+            storageWrite(space->nvHandle, &storageData);
 
             return (ES_STATE_HANDLED());
         }
@@ -160,20 +151,13 @@ static esAction stateCalibrate(struct wspace * space, const esEvent * event) {
             struct nvStorageData storageData;
             esEvent *   response;
             esError     error;
-            size_t      written;
 
             gpuGetTouchCalibration(&storageData.gpuTouchData);
             storageData.checksum = 0;
             storageData.checksum = checksumParity8(
                 &storageData,
                 sizeof(storageData));
-            storageClearSpace(space->nvHandle);
-            error = storageWrite(
-                space->nvHandle, 
-                &storageData, 
-                sizeof(storageData), 
-                &written);
-            storageSync();
+            error = storageWrite(space->nvHandle, &storageData);
             
             if (error != ES_ERROR_NONE) {
                 goto SPACE_FAILURE;

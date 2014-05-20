@@ -20,8 +20,8 @@ extern "C" {
 
 void initFlashDriver(void);
 void termFlashDriver(void);
-esError flashRead(uint32_t  address,       uint8_t * data, size_t size);
-esError flashWrite(uint32_t address, const uint8_t * data, size_t size);
+esError flashRead(uint32_t  address,       void * data, size_t size);
+esError flashWrite(uint32_t address, const void * data, size_t size);
 esError flashEraseSector(uint32_t address);
 esError flashEraseAll(void);
 esError flashErrorStateIs(void);

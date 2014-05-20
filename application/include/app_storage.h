@@ -17,32 +17,26 @@
 extern "C" {
 #endif
 
-struct storageTableEntry {
-    char *              name;
-    uint32_t            id;
-    uint32_t            size;
-};
-
 struct storageSpace;
 
 void initStorageModule(void);
-esError storageRegisterTable(const struct storageTableEntry * entry);
-esError storageOpenSpace(uint32_t id, struct storageSpace ** space);
-esError storageClearSpace(struct storageSpace * space);
+esError storageRegisterEntry(
+    size_t              size,
+    struct storageSpace ** space);
+esError storageClearSpace(
+    struct storageSpace * space);
 esError storageRead(
     struct storageSpace * space,
-    void *           buffer,
-    size_t              size,
-    size_t *            read);
-esError storageSetPos(struct storageSpace * space, uint32_t pos);
+    void *              buffer);
 esError storageWrite(
     struct storageSpace * space,
-    const void *     buffer,
-    size_t              size,
-    size_t *            written);
-esError storageGetSize(struct storageSpace * space, size_t * size);
-esError storageGetEmpty(struct storageSpace * space, size_t * empty);
-esError storageSync(void);
+    const void *        buffer);
+esError storageGetSize(
+    struct storageSpace * space,
+    size_t *            size);
+esError storageGetEmpty(
+    struct storageSpace * space,
+    size_t *            empty);
 
 #ifdef	__cplusplus
 }

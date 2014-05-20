@@ -21,7 +21,6 @@
 #include "logo.h"
 #include "app_buzzer.h"
 #include "app_storage.h"
-#include "config/nv_storage.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 

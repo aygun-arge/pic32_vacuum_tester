@@ -289,7 +289,7 @@ esError flashErrorStateIs(void) {
     }
 }
 
-esError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
+esError flashWrite(uint32_t address, const void * data, size_t size) {
     uint32_t            chunk;
     uint32_t            counter;
     uint32_t            alignedAddress;
@@ -310,32 +310,32 @@ esError flashWrite(uint32_t address, const uint8_t * data, size_t size) {
         if (chunk > size) {
             chunk = size;
         }
-        writeData(address, data, chunk);
+        writeData(address, (const uint8_t *)data, chunk);
     }
     counter = chunk;
     size   -= chunk;
 
     while (size >= FlashPhy.ppSize) {
-        writeData(alignedAddress, &data[counter], FlashPhy.ppSize);
+        writeData(alignedAddress, &((const uint8_t *)data)[counter], FlashPhy.ppSize);
         alignedAddress += FlashPhy.ppSize;
         counter        += FlashPhy.ppSize;
         size           -= FlashPhy.ppSize;
     }
 
     if (size > 0) {
-        writeData(alignedAddress, &data[counter], size);
+        writeData(alignedAddress, &((const uint8_t *)data)[counter], size);
     }
 
     return (ES_ERROR_NONE);
 }
 
-esError flashRead(uint32_t address, uint8_t * data, size_t size) {
+esError flashRead(uint32_t address, void * data, size_t size) {
 
     while ((readStatus() & REG_SR1_WIP) != 0u);                                 /* Wait until previous write operation finishes             */
     validatePhy(&FlashPhy);
 
     if (FlashPhy.isValid) {
-        readData(address, data, size);
+        readData(address, (uint8_t *)data, size);
 
         return (ES_ERROR_NONE);
     } else {
