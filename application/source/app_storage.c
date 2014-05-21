@@ -5,6 +5,7 @@
 #include "driver/s25fl.h"
 #include "base/debug.h"
 #include "base/base.h"
+#include "mem/mem_class.h"
 #include "checksum/checksum.h"
 
 #define CONFIG_MAX_STORAGE_ENTRIES      16
@@ -25,45 +26,21 @@ struct storageSpace {
     uint8_t             checksum;
 };
 
-struct allocationTable {
-    struct storageSpace space[CONFIG_MAX_STORAGE_ENTRIES];
-    uint32_t            entries;
-    uint8_t             checksum;
-};
-
 static ES_MODULE_INFO_CREATE("app_storage", "Application Storage", "Nenad Radulovic");
 
-static struct allocationTable AllocationTable;
+static esMem *          Memory;
 
-static void initAllocationTable(struct allocationTable * table) {
-    uint32_t            id;
-
-    table->entries   = 0u;
-
-    for (id = 0u; id < CONFIG_MAX_STORAGE_ENTRIES; id++) {
-        table->space[id].phy.base = 0u;
-        table->space[id].phy.size = 0u;
-    }
-    table->space[0].phy.base = flashGetNextSector(0); /* First data block is just after allocation table */
-}
-
-void initStorageModule(void) {
-
-    initAllocationTable(&AllocationTable);
+void initStorageModule(esMem * memory) {
+    Memory = memory;
 }
 
 esError storageRegisterEntry(size_t size, struct storageSpace ** space) {
     static uint32_t     prevAlignedAddress;
     uint32_t            nextAlignedAddress;
-
     uint32_t            phySize;
+    esError             error;
 
-    if (AllocationTable.entries != 0) {
-        nextAlignedAddress = prevAlignedAddress;
-    } else {
-        prevAlignedAddress = 0ul;
-        nextAlignedAddress = prevAlignedAddress;
-    }
+    nextAlignedAddress = prevAlignedAddress;
 
     do {
         nextAlignedAddress = flashGetNextSector(nextAlignedAddress);
@@ -73,14 +50,20 @@ esError storageRegisterEntry(size_t size, struct storageSpace ** space) {
         }
         phySize = nextAlignedAddress - prevAlignedAddress;
     } while (phySize < size);
-    *space = &AllocationTable.space[AllocationTable.entries];
-    AllocationTable.space[AllocationTable.entries].data.size = size;
-    AllocationTable.space[AllocationTable.entries].phy.base  = prevAlignedAddress;
-    AllocationTable.space[AllocationTable.entries].phy.size  = phySize;
-    AllocationTable.entries++;
+
+    if ((error = esMemAlloc(Memory, sizeof(struct storageSpace), space)) != ES_ERROR_NONE) {
+        goto STORAGE_REGISTER_ALLOC;
+    }
+    (*space)->data.size     = size;
+    (*space)->data.checksum = 0;
+    (*space)->phy.size      = phySize;
+    (*space)->phy.base      = prevAlignedAddress;
+    (*space)->checksum      = 0;
+    (*space)->checksum      = checksumParity8(*space, sizeof(**space));
     prevAlignedAddress = nextAlignedAddress;
 
     return (ES_ERROR_NONE);
+STORAGE_REGISTER_ALLOC:
 STORAGE_REGISTER_NO_SPACE:
     *space = NULL;
 
