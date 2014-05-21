@@ -12,6 +12,7 @@
 #include <stddef.h>
 
 #include "base/error.h"
+#include "config/nv_config.h"
 
 #ifdef	__cplusplus
 extern "C" {
