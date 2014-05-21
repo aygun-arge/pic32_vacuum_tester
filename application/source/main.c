@@ -3,7 +3,10 @@
 
 #include <xc.h>
 
-#include "main.h"
+#include "base/base.h"
+#include "vtimer/vtimer.h"
+#include "mem/mem_class.h"
+#include "eds/epa.h"
 
 #include "config/mcu_config.h"
 
@@ -25,14 +28,13 @@
 #include "app_config.h"
 #include "app_storage.h"
 #include "app_gpu.h"
-
-#include "base/base.h"
-#include "vtimer/vtimer.h"
-#include "mem/mem_class.h"
-#include "eds/epa.h"
+#include "app_data_log.h"
 
 #include "events.h"
+#include "epa_touch.h"
 #include "epa_gui.h"
+
+#include "main.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -78,18 +80,6 @@ int main(void) {
     initRtcDriver();
     initSysTickDriver();
 
-    /*--  Initialize modules  ------------------------------------------------*/
-    initBatteryModule();
-    initBuzzerModule();
-    initUsbModule();
-    initPSensorModule();
-    initMotorModule();
-    initStorageModule();
-    initGpuModule();
-
-    /*--  Start up tone  -----------------------------------------------------*/
-    //buzzerTone(20);
-
     /*--  Set-up memories  ---------------------------------------------------*/
     esMemInit(
         &esGlobalStaticMemClass,
@@ -104,6 +94,22 @@ int main(void) {
         heap,
         CONFIG_EVENT_HEAP_SIZE,
         0);                                                                     /* Set-up heap memory                                       */
+
+    /*--  Initialize modules  ------------------------------------------------*/
+    initBatteryModule();
+    initBuzzerModule();
+    initUsbModule();
+    initPSensorModule();
+    initMotorModule();
+    initStorageModule(&StaticMem);
+    initGpuModule();
+
+    /*--  Setup NVM storage  -------------------------------------------------*/
+    storageRegisterEntry(&DataLogStorage);
+    storageRegisterEntry(&TouchStorage);
+    
+    /*--  Start up tone  -----------------------------------------------------*/
+    //buzzerTone(20);
     
     /*--  Initialize virtual timers  -----------------------------------------*/
     esModuleVTimerInit();
