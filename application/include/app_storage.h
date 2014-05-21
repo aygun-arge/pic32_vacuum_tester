@@ -12,7 +12,7 @@
 #include <stddef.h>
 
 #include "base/error.h"
-#include "config/nv_config.h"
+#include "mem/mem_class.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -20,10 +20,16 @@ extern "C" {
 
 struct storageSpace;
 
-void initStorageModule(void);
+struct storageEntry {
+    uint32_t            signature;
+    size_t              size;
+    struct storageSpace ** space;
+};
+
+void initStorageModule(esMem * memory);
+
 esError storageRegisterEntry(
-    size_t              size,
-    struct storageSpace ** space);
+    const struct storageEntry * entry);
 esError storageClearSpace(
     struct storageSpace * space);
 esError storageRead(

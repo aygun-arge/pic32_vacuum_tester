@@ -5,7 +5,6 @@
 #include "driver/s25fl.h"
 #include "base/debug.h"
 #include "base/base.h"
-#include "mem/mem_class.h"
 #include "checksum/checksum.h"
 
 #define CONFIG_MAX_STORAGE_ENTRIES      16
@@ -13,6 +12,8 @@
 #define CONFIG_SPACE_NAME_SIZE          16
 
 #define STORAGE_SIGNATURE               0xdeadbeefu
+
+#define STORAGE_DATA_ADDRESS(address)   (address + sizeof(struct storageSpace))
 
 struct storageSpace {
     struct physicalInfo {
@@ -23,10 +24,9 @@ struct storageSpace {
         size_t              size;
         uint8_t             checksum;
     }                   data;
+    uint32_t            signature;
     uint8_t             checksum;
 };
-
-static ES_MODULE_INFO_CREATE("app_storage", "Application Storage", "Nenad Radulovic");
 
 static esMem *          Memory;
 
@@ -34,11 +34,10 @@ void initStorageModule(esMem * memory) {
     Memory = memory;
 }
 
-esError storageRegisterEntry(size_t size, struct storageSpace ** space) {
+esError storageRegisterEntry(const struct storageEntry * entry) {
     static uint32_t     prevAlignedAddress;
     uint32_t            nextAlignedAddress;
     uint32_t            phySize;
-    esError             error;
 
     nextAlignedAddress = prevAlignedAddress;
 
@@ -49,25 +48,38 @@ esError storageRegisterEntry(size_t size, struct storageSpace ** space) {
             goto STORAGE_REGISTER_NO_SPACE;
         }
         phySize = nextAlignedAddress - prevAlignedAddress;
-    } while (phySize < size);
+    } while (phySize < entry->size);
 
-    if ((error = esMemAlloc(Memory, sizeof(struct storageSpace), space)) != ES_ERROR_NONE) {
+    if (esMemAlloc(Memory, sizeof(struct storageSpace), (void **)entry->space)) {
         goto STORAGE_REGISTER_ALLOC;
     }
-    (*space)->data.size     = size;
-    (*space)->data.checksum = 0;
-    (*space)->phy.size      = phySize;
-    (*space)->phy.base      = prevAlignedAddress;
-    (*space)->checksum      = 0;
-    (*space)->checksum      = checksumParity8(*space, sizeof(**space));
+    (*(entry->space))->data.size     = entry->size;
+    (*(entry->space))->data.checksum = 0;
+    (*(entry->space))->phy.size      = phySize;
+    (*(entry->space))->phy.base      = prevAlignedAddress;
+    (*(entry->space))->signature     = entry->signature;
+    (*(entry->space))->checksum      = 0;
+    (*(entry->space))->checksum      = checksumParity8(*(entry->space), sizeof(**(entry->space)));
     prevAlignedAddress = nextAlignedAddress;
 
     return (ES_ERROR_NONE);
 STORAGE_REGISTER_ALLOC:
 STORAGE_REGISTER_NO_SPACE:
-    *space = NULL;
+    *(entry->space) = NULL;
 
     return (ES_ERROR_NO_MEMORY);
+}
+
+esError storageSetSize(struct storageSpace * space, size_t size) {
+
+    if (size <= space->phy.size) {
+        space->data.size = size;
+
+        return (ES_ERROR_NONE);
+    } else {
+
+        return (ES_ERROR_NO_MEMORY);
+    }
 }
 
 esError storageClearSpace(struct storageSpace * space) {
@@ -76,15 +88,11 @@ esError storageClearSpace(struct storageSpace * space) {
     uint32_t            sectorSize;
     esError             error;
 
-    ES_ASSERT(ES_API_USAGE, space->id != (uint32_t)-1);
-
     sectorAddress = space->phy.base;
     sectorSize    = 0u;
 
     do {
-        error = flashEraseSector(sectorAddress);
-
-        if (error != ES_ERROR_NONE) {
+        if ((error = flashEraseSector(sectorAddress))) {
 
             return (error);
         }
@@ -99,17 +107,31 @@ esError storageRead(
     struct storageSpace * space,
     void *              buffer) {
     esError             error;
+    struct storageSpace nvmSpace;
 
-    error = flashRead(space->phy.base, (uint8_t *)buffer, space->data.size);
-
-    if (error != ES_ERROR_NONE) {
+    if ((error = flashRead(space->phy.base, &nvmSpace, sizeof(nvmSpace)))) {
 
         return (error);
     }
 
-    if (checksumParity8(buffer, space->data.size) != space->checksum) {
+    if (checksumParity8(&nvmSpace, sizeof(nvmSpace)) != 0) {
 
-        return (ES_ERROR_DEVICE_FAIL);
+        return (ES_ERROR_OBJECT_INVALID);
+    }
+
+    if ((nvmSpace.signature != space->signature) || (nvmSpace.data.size != space->data.size)) {
+
+        return (ES_ERROR_OBJECT_INVALID);
+    }
+
+    if ((error = flashRead(STORAGE_DATA_ADDRESS(space->phy.base), buffer, nvmSpace.data.size))) {
+
+        return (error);
+    }
+
+    if (checksumParity8(buffer, nvmSpace.data.size) != nvmSpace.data.checksum) {
+
+        return (ES_ERROR_OBJECT_INVALID);
     }
 
     return (ES_ERROR_NONE);
@@ -120,12 +142,20 @@ esError storageWrite(
     const void *        buffer) {
     esError             error;
 
-    if ((error = storageClearSpace(space)) != ES_ERROR_NONE) {
+    if ((error = storageClearSpace(space))) {
 
         return (error);
     }
     
-    if ((error = flashWrite(space->phy.base, (const uint8_t *)buffer, space->data.size)) != ES_ERROR_NONE) {
+    if ((error = flashWrite(STORAGE_DATA_ADDRESS(space->phy.base), buffer, space->data.size))) {
+
+        return (error);
+    }
+    space->data.checksum = checksumParity8(buffer, space->data.size);
+    space->checksum      = 0;
+    space->checksum      = checksumParity8(space, sizeof(*space));
+
+    if ((error = flashWrite(space->phy.base, space, sizeof(*space)))) {
 
         return (error);
     }
