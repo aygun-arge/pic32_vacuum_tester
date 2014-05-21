@@ -16,20 +16,17 @@ struct appDataLogTable {
 
 static struct storageSpace *  Storage;
 
+const struct storageEntry DataLogStorage = {
+    APP_DATA_LOG_SIGNATURE,
+    sizeof(struct appDataLogEntry),
+    &Storage
+};
+
+
+
 esError appDataLogInit(void) {
-    esError             error;
 
-    error = storageRegisterEntry(sizeof(struct appDataLogEntry), &Storage);
-
-    if (error != ES_ERROR_NONE) {
-        /*
-         * TODO: Failed
-         */
-
-        return (error);
-    }
-    
-    return (error);
+    return (ES_ERROR_NONE);
 }
 
 esError appDataLogSave(const struct appDataLog * dataLog);

@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "app_data_log.h"
 #include "app_time.h"
 #include "app_user.h"
 
@@ -19,6 +20,8 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
+
+extern const struct storageEntry DataLogStorage;
 
 struct appDataLog {
     struct appTime      timestamp;

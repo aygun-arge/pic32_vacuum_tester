@@ -46,6 +46,7 @@ struct touchEvent {
     uint8_t             tag;
 };
 
+extern const struct storageEntry TouchStorage;
 extern const struct esEpaDefine TouchEpa;
 extern const struct esSmDefine  TouchSm;
 extern struct esEpa *           Touch;

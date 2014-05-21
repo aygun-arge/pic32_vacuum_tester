@@ -8,6 +8,8 @@
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
+#define TOUCH_SIGNATURE                 0xdead5051u
+
 #define TOUCH_TABLE(entry)                                                      \
     entry(stateInit,                TOP)                                        \
     entry(stateIdle,                TOP)                                        \
@@ -32,7 +34,6 @@ struct wspace {
 
 struct nvStorageData {
     struct gpuTouchData gpuTouchData;
-    uint8_t             checksum;
 };
 
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -50,6 +51,8 @@ static const ES_MODULE_INFO_CREATE("Touch interface", CONFIG_EPA_TOUCH_NAME, "Ne
 
 static const esSmTable  TouchTable[] = ES_STATE_TABLE_INIT(TOUCH_TABLE);
 
+static struct storageSpace * Storage;
+
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 const struct esEpaDefine TouchEpa = ES_EPA_DEFINE(
@@ -61,6 +64,12 @@ const struct esSmDefine  TouchSm = ES_SM_DEFINE(
     sizeof(struct wspace),
     stateInit);
 struct esEpa *           Touch;
+
+const struct storageEntry TouchStorage = {
+    TOUCH_SIGNATURE,
+    sizeof(struct nvStorageData),
+    &Storage
+};
 
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
@@ -87,15 +96,7 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
             esEvent *   response;
             esError     error;
 
-            error = storageRegisterEntry(sizeof(struct nvStorageData), &space->nvHandle);
-
-            if (error != ES_ERROR_NONE) {
-                goto SPACE_FAILURE;
-            }
-            error = storageRead(space->nvHandle, &storageData);
-
-            if ((error != ES_ERROR_NONE)        ||
-                (checksumParity8(&storageData, sizeof(storageData)) != 0u)) {
+            if (storageRead(Storage, &storageData)) {
                 goto SPACE_FAILURE;
             }
             ES_ENSURE(error = esEventCreate(
@@ -122,9 +123,7 @@ SPACE_FAILURE:
             }
             gpuGetDefaultTouch(&storageData.gpuTouchData);
             gpuSetTouchCalibration(&storageData.gpuTouchData);
-            storageData.checksum = 0u;
-            storageData.checksum = checksumParity8(&storageData, sizeof(storageData));
-            storageWrite(space->nvHandle, &storageData);
+            storageWrite(Storage, &storageData);
 
             return (ES_STATE_HANDLED());
         }
@@ -153,11 +152,7 @@ static esAction stateCalibrate(struct wspace * space, const esEvent * event) {
             esError     error;
 
             gpuGetTouchCalibration(&storageData.gpuTouchData);
-            storageData.checksum = 0;
-            storageData.checksum = checksumParity8(
-                &storageData,
-                sizeof(storageData));
-            error = storageWrite(space->nvHandle, &storageData);
+            error = storageWrite(Storage, &storageData);
             
             if (error != ES_ERROR_NONE) {
                 goto SPACE_FAILURE;
