@@ -70,9 +70,9 @@ static uint32_t adcNumOfEnabledChannels;
 static struct adcChannel Channel[CONFIG_NUM_OF_CHANNELS];
 
 static void enableTmr(void) {
-    T3CON   = T_CON_TCKPS(TMR3_PRESCALER);
-    TMR3    = 0u;
-    PR3     = clockGetPeripheralClock() / (CONFIG_ADC_FREQUENCY * (0x1u << TMR3_PRESCALER));
+    T3CON    = T_CON_TCKPS(TMR3_PRESCALER);
+    TMR3     = 0u;
+    PR3      = clockGetPeripheralClock() / (CONFIG_ADC_FREQUENCY * (0x1u << TMR3_PRESCALER));
     T3CONSET = T_CON_ON;
 }
 
