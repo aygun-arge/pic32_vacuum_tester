@@ -19,7 +19,7 @@ uint32_t configGetSecondThTimeout(void) {
     return (1000);
 }
 
-uint32_t configGetSecondThValue(void) {
+uint32_t configGetSecondThRawVacuum(void) {
 
     return (84);
 }

@@ -22,7 +22,7 @@ void configGetGpuCalibrate();
 uint32_t configGetFirstThTimeout(void);
 uint32_t configGetFirstThRawVacuum(void);
 uint32_t configGetSecondThTimeout(void);
-uint32_t configGetSecondThValue(void);
+uint32_t configGetSecondThRawVacuum(void);
 bool configIsPasswordCharValid(char character, uint8_t position);
 uint32_t configPasswordLength(void);
 
