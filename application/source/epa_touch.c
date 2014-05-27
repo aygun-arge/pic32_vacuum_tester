@@ -226,7 +226,7 @@ static esAction stateTouch(struct wspace * space, const esEvent * event) {
                     (esEvent **)&touchEvent));
 
                 if (error == ES_ERROR_NONE) {
-                    touchEvent->tag = tag;
+                    touchEvent->tag = space->prevTag;
                     ES_ENSURE(esEpaSendEvent(space->client, (esEvent *)touchEvent));
                 }
             }

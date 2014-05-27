@@ -393,6 +393,7 @@ static void screenMain(const union state * state) {
     } else {
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
         Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('t'));
         Ft_Gpu_CoCmd_Button(&Gpu, 80,  80, 160, 80, DEF_B1_FONT_SIZE, 0, "TEST");
         Ft_Gpu_CoCmd_ColdStart(&Gpu);
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 0, 0));
@@ -816,10 +817,17 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             snprintBatteryStatus(wspace->state.main.battery);
             wspace->state.main.isDutInPlace = isDutDetected();
             screenMain(&wspace->state);
+#if 1
             appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 MAIN_REFRESH_);
+#endif
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_EXIT: {
+            appTimerCancel(&wspace->refresh);
 
             return (ES_STATE_HANDLED());
         }
@@ -853,18 +861,16 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             snprintBatteryStatus(wspace->state.main.battery);
             wspace->state.main.isDutInPlace = isDutDetected();
             screenMain(&wspace->state);
+#if 1
             appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 MAIN_REFRESH_);
+#endif
             
             return (ES_STATE_HANDLED());
         }
-        case ES_EXIT: {
-            appTimerCancel(&wspace->refresh);
-
-            return (ES_STATE_HANDLED());
-        }
+        
         default : {
 
             return (ES_STATE_IGNORED());
@@ -1060,8 +1066,6 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
     }
 }
 
-
-
 static esAction stateTestResults(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
@@ -1202,17 +1206,14 @@ static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
-            switch (((const struct touchEvent *)event)->tag) {
-                case 'B' : {
 
-                    return (ES_STATE_TRANSITION(stateSettings));
-                }
-                default : {
-                    break;
-                }
+            if (((const struct touchEvent *)event)->tag == 'B') {
+
+                return (ES_STATE_TRANSITION(stateSettings));
+            } else {
+
+                return (ES_STATE_HANDLED());
             }
-            
-            return (ES_STATE_HANDLED());
         }
         default : {
 
@@ -1274,7 +1275,20 @@ static esAction stateSettingsLcdCalib(struct wspace * wspace, const esEvent * ev
 
     switch (event->id) {
         case ES_ENTRY: {
+            esEvent * request;
+            esError   error;
+
             screenCalibrate();
+            ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_CALIBRATE, &request));
+
+            if (error == ES_ERROR_NONE) {
+                ES_ENSURE(esEpaSendEvent(Touch, request));
+            }
+            ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_ENABLE, &request));
+
+            if (error == ES_ERROR_NONE) {
+                ES_ENSURE(esEpaSendEvent(Touch, request));
+            }
 
             return (ES_STATE_HANDLED());
         }
@@ -1435,14 +1449,18 @@ static esAction stateExportChoose(struct wspace * wspace, const esEvent * event)
 
     switch (event->id) {
         case ES_ENTRY: {
+            struct appTime currentTime;
+
+            appTimeGet(&currentTime);
             wspace->state.exportChoose.begin[EXPORT_DAY]   = 20;
             wspace->state.exportChoose.begin[EXPORT_MONTH] = 4;
             wspace->state.exportChoose.begin[EXPORT_YEAR]  = 2014;
-            wspace->state.exportChoose.end[EXPORT_DAY]     = 20;
-            wspace->state.exportChoose.end[EXPORT_MONTH]   = 4;
-            wspace->state.exportChoose.end[EXPORT_YEAR]    = 2014;
+            wspace->state.exportChoose.end[EXPORT_DAY]     = currentTime.day;
+            wspace->state.exportChoose.end[EXPORT_MONTH]   = currentTime.month;
+            wspace->state.exportChoose.end[EXPORT_YEAR]    = currentTime.year;
             wspace->state.exportChoose.focus               = 0;
             screenExportChoose(&wspace->state);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(100), EXPORT_CHOOSE_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
