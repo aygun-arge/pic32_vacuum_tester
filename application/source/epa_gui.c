@@ -1,6 +1,8 @@
 
 /*=========================================================  INCLUDE FILES  ==*/
 
+#include <stdlib.h>
+
 #include "epa_gui.h"
 #include "eds/epa.h"
 #include "vtimer/vtimer.h"
@@ -76,6 +78,7 @@
     entry(stateInit,                TOP)                                        \
     entry(stateWakeUpDisplay,       TOP)                                        \
     entry(stateSetupTouch,          TOP)                                        \
+    entry(stateWelcome,             TOP)                                        \
     entry(stateMain,                TOP)                                        \
     entry(statePreTest,             TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
@@ -87,13 +90,17 @@
     entry(stateSettingsAuthorize,   TOP)                                        \
     entry(stateSettingsAdmin,       TOP)                                        \
     entry(stateSettingsClock,       TOP)                                        \
-    entry(stateSettingsLcdCalib,    TOP)                                        \
+    entry(stateSettingsCalibLcd,    TOP)                                        \
+    entry(stateSettingsCalibSens,   TOP)                                        \
+    entry(stateSettingsCalibSensZ,  TOP)                                        \
+    entry(stateSettingsCalibSensL,  TOP)                                        \
+    entry(stateSettingsCalibSensH,  TOP)                                        \
     entry(stateExport,              TOP)                                        \
     entry(stateExportInsert,        TOP)                                        \
     entry(stateExportMount,         TOP)                                        \
     entry(stateExportChoose,        TOP)                                        \
-    entry(stateExportSaving,        TOP)                                        \
-    entry(stateWelcome,             TOP)
+    entry(stateExportSaving,        TOP)                                        
+    
 
 /*======================================================  LOCAL DATA TYPES  ==*/
 
@@ -115,6 +122,7 @@ enum localEvents {
     SETTINGS_REFRESH_,
     SETTINGS_AUTH_REFRESH_,
     SETTINGS_ABOUT_REFRESH_,
+    SETTINGS_SENSZLH_REFRESH_,
     EXPORT_INSERT_REFRESH_,
     EXPORT_CHOOSE_REFRESH_
 };
@@ -171,8 +179,17 @@ struct wspace {
             uint32_t            focus;
             struct appTime      time;
         }                   settingsClock;
+        struct calibSensZHL {
+            uint32_t            vacuumTarget;
+            uint32_t            rawFullScale;
+            uint32_t            rawVacuum;
+        }                   calibSensZHL;
+        struct progress {
+            char *              title;
+            char *              description;
+            uint32_t            background;
+        }                   progress;
     }                   state;
-    
 };
 
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -197,7 +214,11 @@ static esAction stateSettingsAbout      (struct wspace *, const esEvent *);
 static esAction stateSettingsAuthorize  (struct wspace *, const esEvent *);
 static esAction stateSettingsAdmin      (struct wspace *, const esEvent *);
 static esAction stateSettingsClock      (struct wspace *, const esEvent *);
-static esAction stateSettingsLcdCalib   (struct wspace *, const esEvent *);
+static esAction stateSettingsCalibLcd   (struct wspace *, const esEvent *);
+static esAction stateSettingsCalibSens  (struct wspace *, const esEvent *);
+static esAction stateSettingsCalibSensZ (struct wspace *, const esEvent *);
+static esAction stateSettingsCalibSensL (struct wspace *, const esEvent *);
+static esAction stateSettingsCalibSensH (struct wspace *, const esEvent *);
 static esAction stateExport             (struct wspace *, const esEvent *);
 static esAction stateExportInsert       (struct wspace *, const esEvent *);
 static esAction stateExportMount        (struct wspace *, const esEvent *);
@@ -311,65 +332,12 @@ static void screenWelcome(void) {
     Ft_Gpu_Hal_WaitCmdfifo_empty(&Gpu);
 }
 
-static void screenSettingsAbout(void) {
+static void screenProgress(const union state * state) {
     gpuBegin();
-    constructBackground(0);
-    constructTitle("About");
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION
-        CONFIG_HARDWARE_VERSION);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION
-        CONFIG_SOFTWARE_VERSION);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
-    constructButtonBack(DOWN_MIDDLE);
-    gpuEnd();
-}
-
-static void screenSettingsClock(const union state * state) {
-    uint32_t            textSize[7];
-    char                buffer[10];
-
-    gpuBegin();
-    constructBackground(0);
-    constructTitle("Clock");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
-    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Set");
-    constructButtonBack(DOWN_LEFT);
-    textSize[0] = DEF_N1_FONT_SIZE;
-    textSize[1] = DEF_N1_FONT_SIZE;
-    textSize[2] = DEF_N1_FONT_SIZE;
-    textSize[3] = DEF_N1_FONT_SIZE;
-    textSize[4] = DEF_N1_FONT_SIZE;
-    textSize[5] = DEF_N1_FONT_SIZE;
-    textSize[6] = DEF_N1_FONT_SIZE;
-    textSize[state->settingsClock.focus] = DEF_N2_FONT_SIZE;
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
-    Ft_Gpu_CoCmd_Number(&Gpu, 100, 80,  textSize[0], OPT_CENTER, state->settingsClock.time.hour);
-    Ft_Gpu_CoCmd_Number(&Gpu, 140, 80,  textSize[1], OPT_CENTER, state->settingsClock.time.minute);
-    Ft_Gpu_CoCmd_Number(&Gpu, 180, 80,  textSize[2], OPT_CENTER, state->settingsClock.time.seconds);
-    snprintRtcDaySelector(&state->settingsClock.time, buffer);
-    Ft_Gpu_CoCmd_Text(&Gpu,   230, 80,  textSize[3], OPT_CENTER, buffer);
-    Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, textSize[4], OPT_CENTER, state->settingsClock.time.month);
-    Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, textSize[5], OPT_CENTER, state->settingsClock.time.day);
-    Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, textSize[6], OPT_CENTER, state->settingsClock.time.year);
-    gpuEnd();
-}
-
-static void screenCalibrate(void) {
-    gpuBegin();
-    constructBackground(0);
-    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
-    Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,
-        "Please tap on the dot");
-    Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
+    constructBackground(state->progress.background);
+    constructTitle(state->progress.title);
+    Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, state->progress.description);
+    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
     gpuEnd();
 }
 
@@ -465,8 +433,8 @@ static void screenTestResults(const union state * state) {
     const char *        text;
 
     if (state->test.state == TEST_VALID) {
-        colorBackground   = CLEAR_COLOR_RGB(16, 224, 16);
-        text              = "Test succeessful";
+        colorBackground = CLEAR_COLOR_RGB(16, 224, 16);
+        text            = "Test succeessful";
     } else if (state->test.state == TEST_CANCELED) {
         colorBackground = CLEAR_COLOR_RGB(224, 224, 16);
         text            = "Test cancelled";
@@ -635,8 +603,8 @@ static void screenSettings(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('A'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "About");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
     constructButtonBack(DOWN_MIDDLE);
     gpuEnd();
@@ -669,6 +637,104 @@ static void screenSettingsAuth(void) {
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
     constructButtonBack(DOWN_MIDDLE);
+    gpuEnd();
+}
+
+static void screenSettingsAbout(void) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("About");
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 120, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_HW_VERSION
+        CONFIG_HARDWARE_VERSION);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION
+        CONFIG_SOFTWARE_VERSION);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
+    constructButtonBack(DOWN_MIDDLE);
+    gpuEnd();
+}
+
+static void screenSettingsClock(const union state * state) {
+    uint32_t            textSize[7];
+    char                buffer[10];
+
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("Clock");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
+    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Set");
+    constructButtonBack(DOWN_LEFT);
+    textSize[0] = DEF_N1_FONT_SIZE;
+    textSize[1] = DEF_N1_FONT_SIZE;
+    textSize[2] = DEF_N1_FONT_SIZE;
+    textSize[3] = DEF_N1_FONT_SIZE;
+    textSize[4] = DEF_N1_FONT_SIZE;
+    textSize[5] = DEF_N1_FONT_SIZE;
+    textSize[6] = DEF_N1_FONT_SIZE;
+    textSize[state->settingsClock.focus] = DEF_N2_FONT_SIZE;
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
+    Ft_Gpu_CoCmd_Number(&Gpu, 100, 80,  textSize[0], OPT_CENTER, state->settingsClock.time.hour);
+    Ft_Gpu_CoCmd_Number(&Gpu, 140, 80,  textSize[1], OPT_CENTER, state->settingsClock.time.minute);
+    Ft_Gpu_CoCmd_Number(&Gpu, 180, 80,  textSize[2], OPT_CENTER, state->settingsClock.time.seconds);
+    snprintRtcDaySelector(&state->settingsClock.time, buffer);
+    Ft_Gpu_CoCmd_Text(&Gpu,   230, 80,  textSize[3], OPT_CENTER, buffer);
+    Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, textSize[4], OPT_CENTER, state->settingsClock.time.month);
+    Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, textSize[5], OPT_CENTER, state->settingsClock.time.day);
+    Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, textSize[6], OPT_CENTER, state->settingsClock.time.year);
+    gpuEnd();
+}
+
+static void screenSettingsCalibLcd(void) {
+    gpuBegin();
+    constructBackground(0);
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
+    Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,
+        "Please tap on the dot");
+    Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
+    gpuEnd();
+}
+
+static void screenSettingsCalibSensor(void) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("Calibrate Sensor");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('Z'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "0 " DEF_VACUUM_UNIT);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('L'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "5 " DEF_VACUUM_UNIT);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('H'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
+    constructButtonBack(DOWN_LEFT);
+    gpuEnd();
+}
+
+static void screenSettingsCalibSensorZLH(const union state * state) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("Calibrate Sensor");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
+        "Apply vacuum");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
+        "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
+        state->calibSensZHL.vacuumTarget);
+    Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER,
+        state->calibSensZHL.rawVacuum);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10,
+        0, state->calibSensZHL.rawVacuum, state->calibSensZHL.rawFullScale);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Save");
+    constructButtonBack(DOWN_LEFT);
     gpuEnd();
 }
 
@@ -747,14 +813,15 @@ static esAction stateSetupTouch(struct wspace * wspace, const esEvent * event) {
 
             touchStatusEvent = (const struct touchStatusEvent *)event;
 
-            if (touchStatusEvent->status == TOUCH_INITIALIZED) {
+            if ((touchStatusEvent->status == TOUCH_INITIALIZED) ||
+                (touchStatusEvent->status == TOUCH_CALIBRATED)) {
 
                 return (ES_STATE_TRANSITION(stateWelcome));
             } else if (touchStatusEvent->status == TOUCH_NOT_INITIALIZED) {
                 esEvent * request;
                 esError   error;
                 gpuFadeIn();
-                screenCalibrate();
+                screenSettingsCalibLcd();
                 ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_CALIBRATE, &request));
 
                 if (error == ES_ERROR_NONE) {
@@ -1271,14 +1338,55 @@ static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * e
     }
 }
 
-static esAction stateSettingsLcdCalib(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenSettingsAdmin();
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+
+            switch (((const struct touchEvent *)event)->tag) {
+                case 'S' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettings));
+                }
+                case 'R' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsClock));
+                }
+                case 'L' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibLcd));
+                }
+                default : {
+                    break;
+                }
+            }
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateSettingsCalibLcd(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
             esEvent * request;
             esError   error;
 
-            screenCalibrate();
+            screenSettingsCalibLcd();
             ES_ENSURE(error = esEventCreate(sizeof(esEvent), EVT_TOUCH_CALIBRATE, &request));
 
             if (error == ES_ERROR_NONE) {
@@ -1303,33 +1411,217 @@ static esAction stateSettingsLcdCalib(struct wspace * wspace, const esEvent * ev
     }
 }
 
-static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
-        case ES_ENTRY: {
-            screenSettingsAdmin();
+        case ES_ENTRY : {
+            screenSettingsCalibSensor();
 
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
 
             switch (((const struct touchEvent *)event)->tag) {
-                case 'B' : {
+                case 'Z' : {
 
-                    return (ES_STATE_TRANSITION(stateSettings));
-                }
-                case 'R' : {
-
-                    return (ES_STATE_TRANSITION(stateSettingsClock));
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSensZ));
                 }
                 case 'L' : {
 
-                    return (ES_STATE_TRANSITION(stateSettingsLcdCalib));
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSensL));
+                }
+                case 'H' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSensH));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
                 }
                 default : {
-                    break;
+
+                    return (ES_STATE_HANDLED());
                 }
             }
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateSettingsCalibSensZ(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            wspace->state.calibSensZHL.vacuumTarget = 0;
+            wspace->state.calibSensZHL.rawFullScale = 1024;
+            wspace->state.calibSensZHL.rawVacuum    = getDutRawValue();
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_EXIT : {
+            appTimerCancel(&wspace->refresh);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            switch (((const struct touchEvent *)event)->tag) {
+                case 'S' : {
+
+                    if (configSetRawIdleVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
+                        /*
+                         * TODO: SAVE FAILED
+                         */
+                    }
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                default : {
+
+                    return (ES_STATE_HANDLED());
+                }
+            }
+        }
+        case SETTINGS_SENSZLH_REFRESH_ : {
+            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            wspace->state.calibSensZHL.vacuumTarget = 5;
+            wspace->state.calibSensZHL.rawFullScale = configGetRawIdleVacuum();
+            wspace->state.calibSensZHL.rawVacuum    = min(
+                getDutRawValue(),
+                wspace->state.calibSensZHL.rawFullScale);
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_EXIT : {
+            appTimerCancel(&wspace->refresh);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            switch (((const struct touchEvent *)event)->tag) {
+                case 'S' : {
+
+                    if (configSetFirstThRawVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
+                        /*
+                         * TODO: SAVE FAILED
+                         */
+                    }
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                default : {
+
+                    return (ES_STATE_HANDLED());
+                }
+            }
+        }
+        case SETTINGS_SENSZLH_REFRESH_ : {
+            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            wspace->state.calibSensZHL.vacuumTarget = 10;
+            wspace->state.calibSensZHL.rawFullScale = configGetRawIdleVacuum();
+            wspace->state.calibSensZHL.rawVacuum    = min(
+                getDutRawValue(),
+                wspace->state.calibSensZHL.rawFullScale);
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
+
+            return (ES_STATE_HANDLED());
+        }
+        case ES_EXIT : {
+            appTimerCancel(&wspace->refresh);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            switch (((const struct touchEvent *)event)->tag) {
+                case 'S' : {
+
+                    if (configSetSecondThRawVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
+                        /*
+                         * TODO: SAVE FAILED
+                         */
+                    }
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                }
+                default : {
+
+                    return (ES_STATE_HANDLED());
+                }
+            }
+        }
+        case SETTINGS_SENSZLH_REFRESH_ : {
+            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
+            screenSettingsCalibSensorZLH(&wspace->state);
+            appTimerStart(
+                &wspace->refresh,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+                SETTINGS_SENSZLH_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }

@@ -51,9 +51,12 @@
 #define CMD_BRWR                        0x17u
 #define CMD_4READ                       0x13u
 #define CMD_4PP                         0x12u
+#define CMD_4P4E                        0x21u
 #define CMD_4SE                         0xdcu
 #define CMD_BE                          0x60u
 #define CMD_RESET                       0xf0u
+
+#define CMD_RDCR_TBPARM                 (0x1u << 2)
 
 #define REG_SR1_SRWD                    (0x1u << 7)
 #define REG_SR1_P_ERR                   (0x1u << 6)
@@ -114,7 +117,7 @@ static void readPhy(struct flashPhy * phy) {
     spiSSActivate(&FlashSpi);
     cfiCommand[0] = CMD_RDID;
     spiWrite(&FlashSpi,    cfiCommand, sizeof(cfiCommand));
-    spiExchange(&FlashSpi, cfi,  sizeof(cfi));
+    spiExchange(&FlashSpi, cfi,        sizeof(cfi));
     spiSSDeactivate(&FlashSpi);
 
     phy->isValid = true;
@@ -146,7 +149,7 @@ static void readPhy(struct flashPhy * phy) {
     } else {
         phy->ppSize = 0u;
     }
-    phy->nEraseBlockRegions       = cfi[CFI_NUM_OF_ERASE_BLOCKS_Pos];
+    phy->nEraseBlockRegions =  cfi[CFI_NUM_OF_ERASE_BLOCKS_Pos];
     phy->ebr[0].nSectors    = (cfi[CFI_EBR1_NUM_OF_SECTORS_MSB_Pos] << 8) |
                                cfi[CFI_EBR1_NUM_OF_SECTORS_LSB_Pos];
     phy->ebr[0].sectorSize  = (cfi[CFI_EBR1_SECTOR_SIZE_MSB_Pos] << 8) |
@@ -246,11 +249,16 @@ esError flashEraseSector(uint32_t address) {
 
     prepareWrite();
     spiSSActivate(&FlashSpi);
-    command[0] = CMD_4SE;
-    command[1] = (address >> 24) && 0xffu;
-    command[2] = (address >> 16) && 0xffu;
-    command[3] = (address >>  8) && 0xffu;
-    command[4] = (address >>  0) && 0xffu;
+
+    if (flashGetSectorSize(address) == 0x1000) {
+        command[0] = CMD_4P4E;
+    } else {
+        command[0] = CMD_4SE;
+    }
+    command[1] = (address >> 24) & 0xffu;
+    command[2] = (address >> 16) & 0xffu;
+    command[3] = (address >>  8) & 0xffu;
+    command[4] = (address >>  0) & 0xffu;
     spiWrite(&FlashSpi, command, sizeof(command));
     spiSSDeactivate(&FlashSpi);
 

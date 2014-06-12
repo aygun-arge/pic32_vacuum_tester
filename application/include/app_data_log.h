@@ -34,7 +34,7 @@ struct appDataLog {
     bool                hasPassed;
 };
 
-esError appDataLogInit(void);
+esError initAppDataLog(void);
 esError appDataLogSave(const struct appDataLog * dataLog);
 esError appDataLogNumberOfSlots(uint32_t * nSlots);
 esError appDataLogNumberOfEntries(uint32_t * nEntries);

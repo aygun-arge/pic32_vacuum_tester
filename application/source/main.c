@@ -107,6 +107,11 @@ int main(void) {
     /*--  Setup NVM storage  -------------------------------------------------*/
     storageRegisterEntry(&DataLogStorage);
     storageRegisterEntry(&TouchStorage);
+    storageRegisterEntry(&ConfigStorage);
+
+    /*--  Boot the rest of modules  ------------------------------------------*/
+    initAppDataLog();
+    initAppConfig();
     
     /*--  Start up tone  -----------------------------------------------------*/
     //buzzerTone(20);

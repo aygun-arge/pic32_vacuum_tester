@@ -8,7 +8,7 @@
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
-#define TOUCH_SIGNATURE                 0xdead5051u
+#define TOUCH_SIGNATURE                 0xdead5052u
 
 #define TOUCH_TABLE(entry)                                                      \
     entry(stateInit,                TOP)                                        \

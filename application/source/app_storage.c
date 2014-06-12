@@ -15,7 +15,7 @@
 
 #define STORAGE_DATA_ADDRESS(address)   (address + sizeof(struct storageSpace))
 
-struct storageSpace {
+struct __attribute__((packed)) storageSpace {
     struct physicalInfo {
         uint32_t            base;
         size_t              size;

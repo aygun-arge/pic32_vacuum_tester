@@ -24,7 +24,7 @@ const struct storageEntry DataLogStorage = {
 
 
 
-esError appDataLogInit(void) {
+esError initAppDataLog(void) {
 
     return (ES_ERROR_NONE);
 }
