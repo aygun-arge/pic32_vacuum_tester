@@ -9,7 +9,7 @@
 #include <xc.h>
 
 #define CONFIG_DEFAULT_YEAR             2014
-#define CONFIG_DEFAULT_MONTH            1
+#define CONFIG_DEFAULT_MONTH            6
 #define CONFIG_DEFAULT_DAY              1
 #define CONFIG_DEFAULT_HOUR             0
 #define CONFIG_DEFAULT_MINUTE           0

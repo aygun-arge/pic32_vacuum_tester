@@ -26,7 +26,7 @@
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
-#define CONFIG_PRE_TEST_MS              500
+#define CONFIG_ZERO_CALIB_MS            2000
 #define CONFIG_TEST_CANCEL_MS           5000
 #define CONFIG_TEST_FAIL_MS             5000
 #define CONFIG_TEST_OVERVIEW_MS         5000
@@ -70,6 +70,14 @@
 #define SCREEN_TEST_BACK_BUTTON         (0x1u << 6)
 #define SCREEN_TEST_RETRY_BUTTON        (0x1u << 7)
 
+#define CLOCK_YEAR                      6
+#define CLOCK_MONTH                     4
+#define CLOCK_DAY                       5
+#define CLOCK_AMPM                      3
+#define CLOCK_SECOND                    2
+#define CLOCK_MINUTE                    1
+#define CLOCK_HOUR                      0
+
 #define EXPORT_MONTH                    0
 #define EXPORT_DAY                      1
 #define EXPORT_YEAR                     2
@@ -80,7 +88,7 @@
     entry(stateSetupTouch,          TOP)                                        \
     entry(stateWelcome,             TOP)                                        \
     entry(stateMain,                TOP)                                        \
-    entry(statePreTest,             TOP)                                        \
+    entry(stateZeroCalib,           TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
     entry(stateTestSecondTh,        TOP)                                        \
     entry(stateTestResults,         TOP)                                        \
@@ -112,7 +120,7 @@ enum localEvents {
     WAKEUP_TIMEOUT_ = ES_EVENT_LOCAL_ID,
     WELCOME_WAIT_,
     MAIN_REFRESH_,
-    PRE_TEST_WAIT_,
+    ZERO_CALIB_WAIT_,
     FIRST_TH_TIMEOUT_,
     FIRST_TH_REFRESH_,
     SECOND_TH_TIMEOUT_,
@@ -143,6 +151,7 @@ enum buttonBackPos {
 struct wspace {
     struct appTimer     timeout;
     struct appTimer     refresh;
+    uint32_t            rawIdleVacuum;
     union state {
         struct wakeUpLcd {
             uint32_t            retry;
@@ -203,8 +212,8 @@ static esAction stateInit               (struct wspace *, const esEvent *);
 static esAction stateWakeUpDisplay      (struct wspace *, const esEvent *);
 static esAction stateSetupTouch         (struct wspace *, const esEvent *);
 static esAction stateWelcome            (struct wspace *, const esEvent *);
+static esAction stateZeroCalib          (struct wspace *, const esEvent *);
 static esAction stateMain               (struct wspace *, const esEvent *);
-static esAction statePreTest            (struct wspace *, const esEvent *);
 static esAction stateTestFirstTh        (struct wspace *, const esEvent *);
 static esAction stateTestSecondTh       (struct wspace *, const esEvent *);
 static esAction stateTestResults        (struct wspace *, const esEvent *);
@@ -380,16 +389,6 @@ static void screenMain(const union state * state) {
     gpuEnd();
 }
 
-static void screenPreTest(const union state * state) {
-    (void)state;
-
-    gpuBegin();
-    constructBackground(0);
-    constructTitle("Preparing tests");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "Please wait");
-    gpuEnd();
-}
 
 static void screenTestTh0(const union state * state) {
     gpuBegin();
@@ -683,7 +682,7 @@ static void screenSettingsClock(const union state * state) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_CoCmd_Number(&Gpu, 100, 80,  textSize[0], OPT_CENTER, state->settingsClock.time.hour);
     Ft_Gpu_CoCmd_Number(&Gpu, 140, 80,  textSize[1], OPT_CENTER, state->settingsClock.time.minute);
-    Ft_Gpu_CoCmd_Number(&Gpu, 180, 80,  textSize[2], OPT_CENTER, state->settingsClock.time.seconds);
+    Ft_Gpu_CoCmd_Number(&Gpu, 180, 80,  textSize[2], OPT_CENTER, state->settingsClock.time.second);
     snprintRtcDaySelector(&state->settingsClock.time, buffer);
     Ft_Gpu_CoCmd_Text(&Gpu,   230, 80,  textSize[3], OPT_CENTER, buffer);
     Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, textSize[4], OPT_CENTER, state->settingsClock.time.month);
@@ -695,6 +694,7 @@ static void screenSettingsClock(const union state * state) {
 static void screenSettingsCalibLcd(void) {
     gpuBegin();
     constructBackground(0);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
     Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,
         "Please tap on the dot");
@@ -707,13 +707,11 @@ static void screenSettingsCalibSensor(void) {
     constructBackground(0);
     constructTitle("Calibrate Sensor");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('Z'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "0 " DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('L'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "5 " DEF_VACUUM_UNIT);
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "5 " DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('H'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
-    constructButtonBack(DOWN_LEFT);
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
+    constructButtonBack(DOWN_MIDDLE);
     gpuEnd();
 }
 
@@ -864,9 +862,37 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
                 ES_ENSURE(esEpaSendEvent(Touch, request));
             }
             
-            return (ES_STATE_TRANSITION(stateMain));
+            return (ES_STATE_TRANSITION(stateZeroCalib));
         }
         default: {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateZeroCalib(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            appTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(CONFIG_ZERO_CALIB_MS),
+                ZERO_CALIB_WAIT_);
+            wspace->state.progress.background  = 0;
+            wspace->state.progress.title       = "Zero calibration";
+            wspace->state.progress.description = "Please wait...";
+            screenProgress(&wspace->state);
+            buzzerMelody(OkNotification);
+
+            return (ES_STATE_HANDLED());
+        }
+        case ZERO_CALIB_WAIT_: {
+            wspace->rawIdleVacuum = getDutRawValue();
+
+            return (ES_STATE_TRANSITION(stateMain));
+        }
+        default : {
 
             return (ES_STATE_IGNORED());
         }
@@ -902,8 +928,18 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
 
             switch (((const struct touchEvent *)event)->tag) {
                 case 'T' : {
+                    wspace->state.test.count = 1u;
+                    wspace->state.test.th[0].state       = TEST_NOT_EXECUTED;
+                    wspace->state.test.th[0].rawMaxValue = 0u;
+                    wspace->state.test.th[0].rawThValue  = configGetFirstThRawVacuum();
+                    wspace->state.test.th[0].time        = configGetFirstThTimeout();
+                    wspace->state.test.th[1].state       = TEST_NOT_EXECUTED;
+                    wspace->state.test.th[1].rawMaxValue = 0u;
+                    wspace->state.test.th[1].rawThValue  = configGetSecondThRawVacuum();
+                    wspace->state.test.th[1].time        = configGetSecondThTimeout();
+                    wspace->state.test.rawIdleVacuum     = wspace->rawIdleVacuum;
 
-                    return (ES_STATE_TRANSITION(statePreTest));
+                    return (ES_STATE_TRANSITION(stateTestFirstTh));
                 }
                 case 'S' : {
 
@@ -945,47 +981,6 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-
-static esAction statePreTest(struct wspace * wspace, const esEvent * event) {
-
-    switch (event->id) {
-        case ES_ENTRY: {
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_PRE_TEST_MS),
-                PRE_TEST_WAIT_);
-            screenPreTest(&wspace->state);
-            buzzerMelody(OkNotification);
-
-            return (ES_STATE_HANDLED());
-        }
-        case PRE_TEST_WAIT_: {
-
-            if (isDutDetected()) {
-                wspace->state.test.count = 1u;
-                wspace->state.test.th[0].state       = TEST_NOT_EXECUTED;
-                wspace->state.test.th[0].rawMaxValue = 0u;
-                wspace->state.test.th[0].rawThValue  = configGetFirstThRawVacuum();
-                wspace->state.test.th[0].time        = configGetFirstThTimeout();
-                wspace->state.test.th[1].state       = TEST_NOT_EXECUTED;
-                wspace->state.test.th[1].rawMaxValue = 0u;
-                wspace->state.test.th[1].rawThValue  = configGetSecondThRawVacuum();
-                wspace->state.test.th[1].time        = configGetSecondThTimeout();
-                wspace->state.test.rawIdleVacuum     = getDutRawValue();
-
-                return (ES_STATE_TRANSITION(stateTestFirstTh));
-            } else {
-
-                return (ES_STATE_TRANSITION(stateMain));
-            }
-        }
-        default : {
-
-            return (ES_STATE_IGNORED());
-        }
-    }
-}
-
 static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) {
 
     switch (event->id) {
@@ -1011,10 +1006,10 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
 
                 rawValue = getDutRawValue();
                 
-                if (wspace->state.test.rawIdleVacuum > rawValue) {
+                if (wspace->rawIdleVacuum > rawValue) {
                     uint32_t rawVacuum;
 
-                    rawVacuum = wspace->state.test.rawIdleVacuum - rawValue;
+                    rawVacuum = wspace->rawIdleVacuum - rawValue;
 
                     if (wspace->state.test.th[0].rawMaxValue < rawVacuum) {
                         wspace->state.test.th[0].rawMaxValue = rawVacuum;
@@ -1085,10 +1080,10 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
 
                 rawValue = getDutRawValue();
 
-                if (wspace->state.test.rawIdleVacuum > rawValue) {
+                if (wspace->rawIdleVacuum > rawValue) {
                     uint32_t rawVacuum;
 
-                    rawVacuum = wspace->state.test.rawIdleVacuum - rawValue;
+                    rawVacuum = wspace->rawIdleVacuum - rawValue;
 
                     if (wspace->state.test.th[1].rawMaxValue < rawVacuum) {
                         wspace->state.test.th[1].rawMaxValue = rawVacuum;
@@ -1176,7 +1171,7 @@ static esAction stateTestResults(struct wspace * wspace, const esEvent * event) 
                 }
                 case 'R' : {
 
-                    return (ES_STATE_TRANSITION(statePreTest));
+                    return (ES_STATE_TRANSITION(stateTestFirstTh));
                 }
                 default: {
                     break;
@@ -1353,10 +1348,6 @@ static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibSens));
                 }
-                case 'B' : {
-
-                    return (ES_STATE_TRANSITION(stateSettings));
-                }
                 case 'R' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsClock));
@@ -1364,6 +1355,10 @@ static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event
                 case 'L' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibLcd));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettings));
                 }
                 default : {
                     break;
@@ -1422,10 +1417,6 @@ static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * e
         case EVT_TOUCH_TAG : {
 
             switch (((const struct touchEvent *)event)->tag) {
-                case 'Z' : {
-
-                    return (ES_STATE_TRANSITION(stateSettingsCalibSensZ));
-                }
                 case 'L' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibSensL));
@@ -1515,10 +1506,10 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
     switch (event->id) {
         case ES_ENTRY : {
             wspace->state.calibSensZHL.vacuumTarget = 5;
-            wspace->state.calibSensZHL.rawFullScale = configGetRawIdleVacuum();
+            wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
             wspace->state.calibSensZHL.rawVacuum    = min(
                 getDutRawValue(),
-                wspace->state.calibSensZHL.rawFullScale);
+                wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
             appTimerStart(
                 &wspace->refresh,
@@ -1555,7 +1546,9 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
             }
         }
         case SETTINGS_SENSZLH_REFRESH_ : {
-            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
+            wspace->state.calibSensZHL.rawVacuum = min(
+                getDutRawValue(),
+                wspace->state.calibSensZHL.rawFullScale);
             screenSettingsCalibSensorZLH(&wspace->state);
             appTimerStart(
                 &wspace->refresh,
@@ -1576,10 +1569,10 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
     switch (event->id) {
         case ES_ENTRY : {
             wspace->state.calibSensZHL.vacuumTarget = 10;
-            wspace->state.calibSensZHL.rawFullScale = configGetRawIdleVacuum();
+            wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
             wspace->state.calibSensZHL.rawVacuum    = min(
                 getDutRawValue(),
-                wspace->state.calibSensZHL.rawFullScale);
+                wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
             appTimerStart(
                 &wspace->refresh,
@@ -1616,7 +1609,9 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
             }
         }
         case SETTINGS_SENSZLH_REFRESH_ : {
-            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
+            wspace->state.calibSensZHL.rawVacuum = min(
+                getDutRawValue(),
+                wspace->state.calibSensZHL.rawFullScale);
             screenSettingsCalibSensorZLH(&wspace->state);
             appTimerStart(
                 &wspace->refresh,
@@ -1638,6 +1633,116 @@ static esAction stateSettingsClock(struct wspace * wspace, const esEvent * event
         case ES_ENTRY: {
             wspace->state.settingsClock.focus = 0;
             appTimeGet(&wspace->state.settingsClock.time);
+            screenSettingsClock(&wspace->state);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            switch (((const struct touchEvent *)event)->tag) {
+                case '>' : {
+                    if (wspace->state.settingsClock.focus == 6u) {
+                        wspace->state.settingsClock.focus = 0u;
+                    } else {
+                        wspace->state.settingsClock.focus++;
+                    }
+                    break;
+                }
+                case '<' : {
+                    if (wspace->state.settingsClock.focus == 0u) {
+                        wspace->state.settingsClock.focus = 6u;
+                    } else {
+                        wspace->state.settingsClock.focus--;
+                    }
+                    break;
+                }
+                case '+' : {
+                    switch (wspace->state.settingsClock.focus) {
+                        case CLOCK_YEAR : {
+                            wspace->state.settingsClock.time.year++;
+                            break;
+                        }
+                        case CLOCK_MONTH : {
+                            wspace->state.settingsClock.time.month++;
+                            break;
+                        }
+                        case CLOCK_DAY : {
+                            wspace->state.settingsClock.time.day++;
+                            break;
+                        }
+                        case CLOCK_AMPM : {
+                            if (wspace->state.settingsClock.time.daySelector == APPTIME_AM) {
+                                wspace->state.settingsClock.time.daySelector = APPTIME_PM;
+                            } else {
+                                wspace->state.settingsClock.time.daySelector = APPTIME_AM;
+                            }
+                            break;
+                        }
+                        case CLOCK_HOUR : {
+                            wspace->state.settingsClock.time.hour++;
+                            break;
+                        }
+                        case CLOCK_MINUTE : {
+                            wspace->state.settingsClock.time.minute++;
+                            break;
+                        }
+                        case CLOCK_SECOND : {
+                            wspace->state.settingsClock.time.second++;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case '-' : {
+                    switch (wspace->state.settingsClock.focus) {
+                        case CLOCK_YEAR : {
+                            wspace->state.settingsClock.time.year--;
+                            break;
+                        }
+                        case CLOCK_MONTH : {
+                            wspace->state.settingsClock.time.month--;
+                            break;
+                        }
+                        case CLOCK_DAY : {
+                            wspace->state.settingsClock.time.day--;
+                            break;
+                        }
+                        case CLOCK_AMPM : {
+                            if (wspace->state.settingsClock.time.daySelector == APPTIME_AM) {
+                                wspace->state.settingsClock.time.daySelector = APPTIME_PM;
+                            } else {
+                                wspace->state.settingsClock.time.daySelector = APPTIME_AM;
+                            }
+                            break;
+                        }
+                        case CLOCK_HOUR : {
+                            wspace->state.settingsClock.time.hour--;
+                            break;
+                        }
+                        case CLOCK_MINUTE : {
+                            wspace->state.settingsClock.time.minute--;
+                            break;
+                        }
+                        case CLOCK_SECOND : {
+                            wspace->state.settingsClock.time.second--;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 'S' : {
+                    appTimeSet(&wspace->state.settingsClock.time);
+
+                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                }
+                case 'B' : {
+
+                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                }
+                default : {
+                    ;
+                }
+            }
+            appTimeRestrict(&wspace->state.settingsClock.time);
             screenSettingsClock(&wspace->state);
 
             return (ES_STATE_HANDLED());
@@ -1774,14 +1879,14 @@ static esAction stateExportChoose(struct wspace * wspace, const esEvent * event)
                     return (ES_STATE_TRANSITION(stateMain));
                 }
                 case '>' : {
-                    if (wspace->state.exportChoose.focus != 5u) {
-                        wspace->state.exportChoose.focus++;
+                    if (wspace->state.exportChoose.focus == 5u) {
+                        wspace->state.exportChoose.focus = 0u;
                     }
                     break;
                 }
                 case '<' : {
-                    if (wspace->state.exportChoose.focus != 0u) {
-                        wspace->state.exportChoose.focus--;
+                    if (wspace->state.exportChoose.focus == 0u) {
+                        wspace->state.exportChoose.focus = 5u;
                     }
                     break;
                 }
