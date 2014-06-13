@@ -8,6 +8,44 @@
 #define APPTIME_AM_STRING               "AM"
 #define APPTIME_PM_STRING               "PM"
 
+void appTimeRestrict(struct appTime * time) {
+    if (time->year > 2024) {
+        time->year = 2024;
+    }
+    
+    if (time->year < 2014) {
+        time->year = 2014;
+    }
+    
+    if (time->month > 12) {
+        time->month = 12;
+    }
+
+    if (time->month < 1) {
+        time->month = 1;
+    }
+    
+    if (time->day > 31) {
+        time->day = 31;
+    }
+
+    if (time->day < 1) {
+        time->day = 1;
+    }
+
+    if (time->hour > 12) {
+        time->hour = 12;
+    }
+
+    if (time->minute > 59) {
+        time->minute = 59;
+    }
+
+    if (time->second > 59) {
+        time->second = 59;
+    }
+}
+
 esError appTimeGet(struct appTime * time) {
     esError             error;
     struct rtcTime      rtcTime;
@@ -32,7 +70,7 @@ esError appTimeGet(struct appTime * time) {
         }
     }
     time->minute  = rtcTime.minute;
-    time->seconds = rtcTime.second;
+    time->second = rtcTime.second;
 
     return (error);
 }
@@ -57,7 +95,7 @@ esError appTimeSet(const struct appTime * time) {
         }
     }
     rtcTime.minute = time->minute;
-    rtcTime.second = time->seconds;
+    rtcTime.second = time->second;
 
     return (rtcSetTime(&rtcTime));
 }

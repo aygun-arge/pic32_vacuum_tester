@@ -28,9 +28,11 @@ struct appTime {
     uint8_t             day;
     uint8_t             hour;
     uint8_t             minute;
-    uint8_t             seconds;
+    uint8_t             second;
     enum daySelector    daySelector;
 };
+
+void appTimeRestrict(struct appTime * time);
 
 esError appTimeGet(struct appTime * time);
 esError appTimeSet(const struct appTime * time);
