@@ -1520,8 +1520,21 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
         case EVT_TOUCH_TAG : {
             switch (((const struct touchEvent *)event)->tag) {
                 case 'S' : {
+                    bool        isSaved;
 
-                    if (configSetFirstThRawVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
+                    isSaved = false;
+
+                    if (wspace->state.calibSensZHL.rawVacuum < wspace->rawIdleVacuum) {
+                        uint32_t    rawVacuum;
+                    
+                        rawVacuum = wspace->rawIdleVacuum - wspace->state.calibSensZHL.rawVacuum;
+
+                        if (configSetFirstThRawVacuum(rawVacuum) == true) {
+                            isSaved = true;
+                        }
+                    }
+
+                    if (!isSaved) {
                         /*
                          * TODO: SAVE FAILED
                          */
@@ -1583,10 +1596,25 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
         case EVT_TOUCH_TAG : {
             switch (((const struct touchEvent *)event)->tag) {
                 case 'S' : {
+                    bool        isSaved;
 
-                    if (configSetSecondThRawVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
+                    isSaved = false;
+
+                    if (wspace->state.calibSensZHL.rawVacuum < wspace->rawIdleVacuum) {
+                        uint32_t    rawVacuum;
+
+                        rawVacuum = wspace->rawIdleVacuum - wspace->state.calibSensZHL.rawVacuum;
+
+                        if (rawVacuum > configGetFirstThRawVacuum()) {
+                            if (configSetSecondThRawVacuum(rawVacuum) == true) {
+                                isSaved = true;
+                            }
+                        }
+                    }
+
+                    if (!isSaved) {
                         /*
-                         * TODO: SAVE FAILED
+                         * TODO: Handle this failure
                          */
                     }
 
