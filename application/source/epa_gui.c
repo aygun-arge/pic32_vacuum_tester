@@ -284,11 +284,13 @@ static void testToggleBackground(union state * state) {
 
 static void constructBackground(uint32_t background) {
     if (background == 0) {
-        background = CLEAR_COLOR_RGB(224, 224, 224);
+        Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(224, 224, 224));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 0, 0));
+        Ft_Gpu_CoCmd_Gradient(&Gpu, 0, 0, 0x707070, 0, DISP_HEIGHT, 0xe0e0e0);
+    } else {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, background);
+        Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 0, 0));
     }
-    Ft_Gpu_Hal_WrCmd32(&Gpu, background);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1, 0, 0));
-    Ft_Gpu_CoCmd_Gradient(&Gpu, 0,0, 0x707070, 0, DISP_HEIGHT, 0xe0e0e0);
 }
 
 static void constructTitle(const char * title) {
@@ -779,11 +781,6 @@ static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event
 
             return (ES_STATE_TRANSITION(stateWakeUpDisplay));
         }
-        case ES_EXIT: {
-            appTimerCancel(&wspace->timeout);
-
-            return (ES_STATE_HANDLED());
-        }
         default: {
 
             return (ES_STATE_IGNORED());
@@ -910,12 +907,10 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             snprintBatteryStatus(wspace->state.main.battery);
             wspace->state.main.isDutInPlace = isDutDetected();
             screenMain(&wspace->state);
-#if 1
             appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 MAIN_REFRESH_);
-#endif
 
             return (ES_STATE_HANDLED());
         }
@@ -964,12 +959,10 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             snprintBatteryStatus(wspace->state.main.battery);
             wspace->state.main.isDutInPlace = isDutDetected();
             screenMain(&wspace->state);
-#if 1
             appTimerStart(
                 &wspace->refresh,
                 ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 MAIN_REFRESH_);
-#endif
             
             return (ES_STATE_HANDLED());
         }
@@ -1149,6 +1142,7 @@ static esAction stateTestResults(struct wspace * wspace, const esEvent * event) 
                 }
             }
             buzzerMelody(wspace->state.test.notification);
+            testToggleBackground(&wspace->state);
             screenTestResults(&wspace->state);
             appTimerStart(
                 &wspace->timeout,
@@ -1181,8 +1175,8 @@ static esAction stateTestResults(struct wspace * wspace, const esEvent * event) 
             return (ES_STATE_HANDLED());
         }
         case TEST_RESULTS_NOTIFY_TIMEOUT_: {
-            screenTestResults(&wspace->state);
             testToggleBackground(&wspace->state);
+            screenTestResults(&wspace->state);
             wspace->state.test.notification++;
 
             if (*wspace->state.test.notification != 0) {
