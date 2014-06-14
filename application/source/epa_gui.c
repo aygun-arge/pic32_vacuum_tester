@@ -23,6 +23,8 @@
 #include "logo.h"
 #include "app_buzzer.h"
 #include "app_storage.h"
+#include "app_user.h"
+#include "app_data_log.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -88,6 +90,7 @@
     entry(stateSetupTouch,          TOP)                                        \
     entry(stateWelcome,             TOP)                                        \
     entry(stateMain,                TOP)                                        \
+    entry(stateProgress,            TOP)                                        \
     entry(stateZeroCalib,           TOP)                                        \
     entry(stateTestFirstTh,         TOP)                                        \
     entry(stateTestSecondTh,        TOP)                                        \
@@ -100,7 +103,6 @@
     entry(stateSettingsClock,       TOP)                                        \
     entry(stateSettingsCalibLcd,    TOP)                                        \
     entry(stateSettingsCalibSens,   TOP)                                        \
-    entry(stateSettingsCalibSensZ,  TOP)                                        \
     entry(stateSettingsCalibSensL,  TOP)                                        \
     entry(stateSettingsCalibSensH,  TOP)                                        \
     entry(stateExport,              TOP)                                        \
@@ -132,7 +134,8 @@ enum localEvents {
     SETTINGS_ABOUT_REFRESH_,
     SETTINGS_SENSZLH_REFRESH_,
     EXPORT_INSERT_REFRESH_,
-    EXPORT_CHOOSE_REFRESH_
+    EXPORT_CHOOSE_REFRESH_,
+    PROGRESS_TIMEOUT_
 };
 
 enum testState {
@@ -175,6 +178,9 @@ struct wspace {
             bool                isBackgroundEnabled;
             uint32_t            count;
         }                   test;
+        struct testReport {
+            uint32_t                nEntries;
+        }                   testReport;
         struct settingsAuthorize {
             uint32_t            counter;
             uint32_t            numOfCharactes;
@@ -197,6 +203,8 @@ struct wspace {
             char *              title;
             char *              description;
             uint32_t            background;
+            esAction            nextState;
+            uint32_t            timeout;
         }                   progress;
     }                   state;
 };
@@ -214,6 +222,7 @@ static esAction stateSetupTouch         (struct wspace *, const esEvent *);
 static esAction stateWelcome            (struct wspace *, const esEvent *);
 static esAction stateZeroCalib          (struct wspace *, const esEvent *);
 static esAction stateMain               (struct wspace *, const esEvent *);
+static esAction stateProgress           (struct wspace *, const esEvent * );
 static esAction stateTestFirstTh        (struct wspace *, const esEvent *);
 static esAction stateTestSecondTh       (struct wspace *, const esEvent *);
 static esAction stateTestResults        (struct wspace *, const esEvent *);
@@ -225,7 +234,6 @@ static esAction stateSettingsAdmin      (struct wspace *, const esEvent *);
 static esAction stateSettingsClock      (struct wspace *, const esEvent *);
 static esAction stateSettingsCalibLcd   (struct wspace *, const esEvent *);
 static esAction stateSettingsCalibSens  (struct wspace *, const esEvent *);
-static esAction stateSettingsCalibSensZ (struct wspace *, const esEvent *);
 static esAction stateSettingsCalibSensL (struct wspace *, const esEvent *);
 static esAction stateSettingsCalibSensH (struct wspace *, const esEvent *);
 static esAction stateExport             (struct wspace *, const esEvent *);
@@ -488,13 +496,12 @@ static void screenTestResults(const union state * state) {
     gpuEnd();
 }
 
-static void screenTestSaving(void) {
-    static uint32_t record = 12;
+static void screenTestSaving(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Saving...");
-    Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Record number:");
-    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTER, record++);
+    Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Number of records:");
+    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTER, state->testReport.nEntries);
     Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
     gpuEnd();
 }
@@ -598,13 +605,19 @@ static void screenExportChoose(const union state * state) {
 }
 
 static void screenSettings(void) {
+    struct appUser user;
+
+    appUserGetCurrent(&user);
     gpuBegin();
     constructBackground(0);
     constructTitle("Settings");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('A'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "About");
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
+
+    if (user.id != APPUSER_ADMINISTRATOR_ID) {
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
+    }
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
     constructButtonBack(DOWN_MIDDLE);
@@ -713,6 +726,8 @@ static void screenSettingsCalibSensor(void) {
     Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "5 " DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('H'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Reset");
     constructButtonBack(DOWN_MIDDLE);
     gpuEnd();
 }
@@ -926,12 +941,12 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
                     wspace->state.test.count = 1u;
                     wspace->state.test.th[0].state       = TEST_NOT_EXECUTED;
                     wspace->state.test.th[0].rawMaxValue = 0u;
-                    wspace->state.test.th[0].rawThValue  = configGetFirstThRawVacuum();
-                    wspace->state.test.th[0].time        = configGetFirstThTimeout();
+                    wspace->state.test.th[0].rawThValue  = configGetTh0RawVacuum();
+                    wspace->state.test.th[0].time        = configGetTh0Timeout();
                     wspace->state.test.th[1].state       = TEST_NOT_EXECUTED;
                     wspace->state.test.th[1].rawMaxValue = 0u;
-                    wspace->state.test.th[1].rawThValue  = configGetSecondThRawVacuum();
-                    wspace->state.test.th[1].time        = configGetSecondThTimeout();
+                    wspace->state.test.th[1].rawThValue  = configGetTh1RawVacuum();
+                    wspace->state.test.th[1].time        = configGetTh1Timeout();
                     wspace->state.test.rawIdleVacuum     = wspace->rawIdleVacuum;
 
                     return (ES_STATE_TRANSITION(stateTestFirstTh));
@@ -967,6 +982,29 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateProgress(struct wspace * wspace, const esEvent * event) {
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            appTimerStart(
+                &wspace->timeout,
+                ES_VTMR_TIME_TO_TICK_MS(wspace->state.progress.timeout),
+                PROGRESS_TIMEOUT_);
+            screenProgress(&wspace->state);
+
+            return (ES_STATE_HANDLED());
+        }
+        case PROGRESS_TIMEOUT_: {
+
+            return (wspace->state.progress.nextState);
+        }
         default : {
 
             return (ES_STATE_IGNORED());
@@ -1055,7 +1093,7 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
             wspace->state.test.th[1].state = TEST_STARTED;
             appTimerStart(
                 &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(configGetSecondThTimeout()),
+                ES_VTMR_TIME_TO_TICK_MS(configGetTh1Timeout()),
                 SECOND_TH_TIMEOUT_);
             appTimerStart(
                 &wspace->refresh,
@@ -1164,6 +1202,7 @@ static esAction stateTestResults(struct wspace * wspace, const esEvent * event) 
                     return (ES_STATE_TRANSITION(stateTestResultsSaving));
                 }
                 case 'R' : {
+                    wspace->state.test.count++;
 
                     return (ES_STATE_TRANSITION(stateTestFirstTh));
                 }
@@ -1199,7 +1238,19 @@ static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * e
 
     switch (event->id) {
         case ES_ENTRY: {
-            screenTestSaving();
+            struct appDataLog entry;
+
+            entry.hasPassed         = (evaluateTests(&wspace->state) == TEST_VALID) ? true : false;
+            entry.th[0].time        = wspace->state.test.th[0].time;
+            entry.th[0].rawMaxValue = wspace->state.test.th[0].rawMaxValue;
+            entry.th[1].time        = wspace->state.test.th[1].time;
+            entry.th[1].rawMaxValue = wspace->state.test.th[1].rawMaxValue;
+            entry.numOfTests        = wspace->state.test.count;
+            appTimeGet(&entry.timestamp);
+            appUserGetCurrent(&entry.user);
+            appDataLogSave(&entry);
+            appDataLogNumberOfEntries(&wspace->state.testReport.nEntries);
+            screenTestSaving(&wspace->state);
             appTimerStart(
                 &wspace->timeout,
                 ES_VTMR_TIME_TO_TICK_MS(1000),
@@ -1233,8 +1284,15 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
                     return (ES_STATE_TRANSITION(stateSettingsAbout));
                 }
                 case 'U' : {
+                    struct appUser user;
 
-                    return (ES_STATE_TRANSITION(stateSettingsAuthorize));
+                    appUserGetCurrent(&user);
+
+                    if (user.id == APPUSER_ADMINISTRATOR_ID) {
+                        return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    } else {
+                        return (ES_STATE_TRANSITION(stateSettingsAuthorize));
+                    }
                 }
                 case 'B' : {
 
@@ -1305,6 +1363,7 @@ static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * e
                             if (wspace->state.settingsAuthorize.counter ==
                                 wspace->state.settingsAuthorize.numOfCharactes) {
                                 buzzerMelody(OkNotification);
+                                appUserSetCurrent(APPUSER_ADMINISTRATOR_ID);
 
                                 return (ES_STATE_TRANSITION(stateSettingsAdmin));
                             }
@@ -1390,8 +1449,13 @@ static esAction stateSettingsCalibLcd(struct wspace * wspace, const esEvent * ev
             return (ES_STATE_HANDLED());
         }
         case ES_INIT: {
+            wspace->state.progress.title       = "Touch Calibration";
+            wspace->state.progress.description = "Saving data...";
+            wspace->state.progress.background  = 0u;
+            wspace->state.progress.timeout     = 1000u;
+            wspace->state.progress.nextState   = ES_STATE_TRANSITION(stateSettingsAdmin);
 
-            return (ES_STATE_TRANSITION(stateSettingsAdmin));
+            return (ES_STATE_TRANSITION(stateProgress));
         }
         default: {
 
@@ -1419,6 +1483,41 @@ static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * e
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibSensH));
                 }
+                case 'R' : {
+                    bool        isSuccessful;
+
+                    isSuccessful = configSetTh0RawVacuum(configGetTh0DefaultRawVacuum());
+
+                    if (!isSuccessful) {
+
+                        return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    }
+                    isSuccessful = configSetTh0Timeout(configGetTh0DefaultTimeout());
+
+                    if (!isSuccessful) {
+
+                        return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    }
+                    isSuccessful = configSetTh1RawVacuum(configGetTh1DefaultRawVacuum());
+
+                    if (!isSuccessful) {
+
+                        return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    }
+                    isSuccessful = configSetTh1Timeout(configGetTh1DefaultTimeout());
+
+                    if (!isSuccessful) {
+
+                        return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    }
+                    wspace->state.progress.title       = "Calibrate Sensor";
+                    wspace->state.progress.description = "Saving data...";
+                    wspace->state.progress.background  = 0u;
+                    wspace->state.progress.timeout     = 1000u;
+                    wspace->state.progress.nextState   = ES_STATE_TRANSITION(stateSettingsCalibSens);
+
+                    return (ES_STATE_TRANSITION(stateProgress));
+                }
                 case 'B' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsAdmin));
@@ -1428,65 +1527,6 @@ static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * e
                     return (ES_STATE_HANDLED());
                 }
             }
-        }
-        default : {
-
-            return (ES_STATE_IGNORED());
-        }
-    }
-}
-
-static esAction stateSettingsCalibSensZ(struct wspace * wspace, const esEvent * event) {
-
-    switch (event->id) {
-        case ES_ENTRY : {
-            wspace->state.calibSensZHL.vacuumTarget = 0;
-            wspace->state.calibSensZHL.rawFullScale = 1024;
-            wspace->state.calibSensZHL.rawVacuum    = getDutRawValue();
-            screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                SETTINGS_SENSZLH_REFRESH_);
-
-            return (ES_STATE_HANDLED());
-        }
-        case ES_EXIT : {
-            appTimerCancel(&wspace->refresh);
-
-            return (ES_STATE_HANDLED());
-        }
-        case EVT_TOUCH_TAG : {
-            switch (((const struct touchEvent *)event)->tag) {
-                case 'S' : {
-
-                    if (configSetRawIdleVacuum(wspace->state.calibSensZHL.rawVacuum) != true) {
-                        /*
-                         * TODO: SAVE FAILED
-                         */
-                    }
-
-                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
-                }
-                case 'B' : {
-
-                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
-                }
-                default : {
-
-                    return (ES_STATE_HANDLED());
-                }
-            }
-        }
-        case SETTINGS_SENSZLH_REFRESH_ : {
-            wspace->state.calibSensZHL.rawVacuum = getDutRawValue();
-            screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                SETTINGS_SENSZLH_REFRESH_);
-
-            return (ES_STATE_HANDLED());
         }
         default : {
 
@@ -1529,7 +1569,7 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
                     
                         rawVacuum = wspace->rawIdleVacuum - wspace->state.calibSensZHL.rawVacuum;
 
-                        if (configSetFirstThRawVacuum(rawVacuum) == true) {
+                        if (configSetTh0RawVacuum(rawVacuum) == true) {
                             isSaved = true;
                         }
                     }
@@ -1539,8 +1579,13 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
                          * TODO: SAVE FAILED
                          */
                     }
+                    wspace->state.progress.title       = "Calibrate Sensor";
+                    wspace->state.progress.description = "Saving data...";
+                    wspace->state.progress.background  = 0u;
+                    wspace->state.progress.timeout     = 1000u;
+                    wspace->state.progress.nextState   = ES_STATE_TRANSITION(stateSettingsCalibSens);
 
-                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                    return (ES_STATE_TRANSITION(stateProgress));
                 }
                 case 'B' : {
 
@@ -1605,8 +1650,8 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
 
                         rawVacuum = wspace->rawIdleVacuum - wspace->state.calibSensZHL.rawVacuum;
 
-                        if (rawVacuum > configGetFirstThRawVacuum()) {
-                            if (configSetSecondThRawVacuum(rawVacuum) == true) {
+                        if (rawVacuum > configGetTh0RawVacuum()) {
+                            if (configSetTh1RawVacuum(rawVacuum) == true) {
                                 isSaved = true;
                             }
                         }
@@ -1617,8 +1662,13 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
                          * TODO: Handle this failure
                          */
                     }
+                    wspace->state.progress.title       = "Calibrate Sensor";
+                    wspace->state.progress.description = "Saving data...";
+                    wspace->state.progress.background  = 0u;
+                    wspace->state.progress.timeout     = 1000u;
+                    wspace->state.progress.nextState   = ES_STATE_TRANSITION(stateSettingsCalibSens);
 
-                    return (ES_STATE_TRANSITION(stateSettingsCalibSens));
+                    return (ES_STATE_TRANSITION(stateProgress));
                 }
                 case 'B' : {
 
@@ -1753,8 +1803,13 @@ static esAction stateSettingsClock(struct wspace * wspace, const esEvent * event
                 }
                 case 'S' : {
                     appTimeSet(&wspace->state.settingsClock.time);
+                    wspace->state.progress.title       = "Clock";
+                    wspace->state.progress.description = "Saving data...";
+                    wspace->state.progress.background  = 0u;
+                    wspace->state.progress.timeout     = 1000u;
+                    wspace->state.progress.nextState   = ES_STATE_TRANSITION(stateSettingsAdmin);
 
-                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                    return (ES_STATE_TRANSITION(stateProgress));
                 }
                 case 'B' : {
 
