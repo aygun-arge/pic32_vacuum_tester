@@ -2,7 +2,7 @@
 #include "app_config.h"
 #include "app_storage.h"
 
-#define APP_CONFIG_SIGNATURE            0xdadbbeefu
+#define APP_CONFIG_SIGNATURE            0xdadcbeefu
 
 #define CONFIG_DEF_RAW_IDLE_VACUUM      270
 #define CONFIG_DEF_TH0_TIMEOUT          500
