@@ -29,6 +29,7 @@
 #include "app_storage.h"
 #include "app_gpu.h"
 #include "app_data_log.h"
+#include "app_user.h"
 
 #include "events.h"
 #include "epa_touch.h"
@@ -112,6 +113,8 @@ int main(void) {
     /*--  Boot the rest of modules  ------------------------------------------*/
     initAppDataLog();
     initAppConfig();
+
+    appUserSetCurrent(APPUSER_OPERATOR_ID);
     
     /*--  Start up tone  -----------------------------------------------------*/
     //buzzerTone(20);
