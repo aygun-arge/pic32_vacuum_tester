@@ -12,11 +12,10 @@
 #define CONFIG_DEF_PASSWORD             "1248"
 
 struct config {
-    uint32_t            rawIdleVacuum;
-    struct test {
-        uint32_t        timeoutMs;
+    struct th {
+        uint32_t        time;
         uint32_t        rawVacuum;
-    }                   test[2];
+    }                   th[2];
     char                password[4];
 };
 
@@ -29,15 +28,14 @@ const struct storageEntry ConfigStorage = {
 };
 
 static void appConfigReset(struct config * config) {
-    config->rawIdleVacuum     = CONFIG_DEF_RAW_IDLE_VACUUM;
-    config->test[0].timeoutMs = CONFIG_DEF_TH0_TIMEOUT;
-    config->test[0].rawVacuum = CONFIG_DEF_TH0_RAW_VACUUM;
-    config->test[1].timeoutMs = CONFIG_DEF_TH1_TIMEOUT;
-    config->test[1].rawVacuum = CONFIG_DEF_TH1_RAW_VACUUM;
-    config->password[0]       = CONFIG_DEF_PASSWORD[0];
-    config->password[1]       = CONFIG_DEF_PASSWORD[1];
-    config->password[2]       = CONFIG_DEF_PASSWORD[2];
-    config->password[3]       = CONFIG_DEF_PASSWORD[3];
+    config->th[0].time      = CONFIG_DEF_TH0_TIMEOUT;
+    config->th[0].rawVacuum = CONFIG_DEF_TH0_RAW_VACUUM;
+    config->th[1].time      = CONFIG_DEF_TH1_TIMEOUT;
+    config->th[1].rawVacuum = CONFIG_DEF_TH1_RAW_VACUUM;
+    config->password[0]     = CONFIG_DEF_PASSWORD[0];
+    config->password[1]     = CONFIG_DEF_PASSWORD[1];
+    config->password[2]     = CONFIG_DEF_PASSWORD[2];
+    config->password[3]     = CONFIG_DEF_PASSWORD[3];
 }
 
 void initAppConfig(void) {
@@ -49,31 +47,13 @@ void initAppConfig(void) {
     }
 }
 
-bool configSetRawIdleVacuum(uint32_t rawVacuum) {
+bool configSetTh0Timeout(uint32_t timeoutMs) {
     struct config       config;
 
     if (storageRead(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
     }
-    config.rawIdleVacuum = rawVacuum;
-
-    if (storageWrite(Storage, &config) != ES_ERROR_NONE) {
-        goto SPACE_FAILURE;
-    }
-
-    return (true);
-SPACE_FAILURE:
-
-    return (false);
-}
-
-bool configSetFirstThTimeout(uint32_t timeoutMs) {
-    struct config       config;
-
-    if (storageRead(Storage, &config) != ES_ERROR_NONE) {
-        goto SPACE_FAILURE;
-    }
-    config.test[0].timeoutMs = timeoutMs;
+    config.th[0].time = timeoutMs;
     
     if (storageWrite(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
@@ -85,13 +65,13 @@ SPACE_FAILURE:
     return (false);
 }
 
-bool configSetFirstThRawVacuum(uint32_t rawVacuum) {
+bool configSetTh0RawVacuum(uint32_t rawVacuum) {
     struct config       config;
 
     if (storageRead(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
     }
-    config.test[0].rawVacuum = rawVacuum;
+    config.th[0].rawVacuum = rawVacuum;
 
     if (storageWrite(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
@@ -103,13 +83,13 @@ SPACE_FAILURE:
     return (false);
 }
 
-bool configSetSecondThTimeout(uint32_t timeoutMs) {
+bool configSetTh1Timeout(uint32_t timeoutMs) {
     struct config       config;
 
     if (storageRead(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
     }
-    config.test[1].timeoutMs = timeoutMs;
+    config.th[1].time = timeoutMs;
 
     if (storageWrite(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
@@ -121,13 +101,13 @@ SPACE_FAILURE:
     return (false);
 }
 
-bool configSetSecondThRawVacuum(uint32_t rawVacuum) {
+bool configSetTh1RawVacuum(uint32_t rawVacuum) {
     struct config       config;
 
     if (storageRead(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
     }
-    config.test[1].rawVacuum = rawVacuum;
+    config.th[1].rawVacuum = rawVacuum;
 
     if (storageWrite(Storage, &config) != ES_ERROR_NONE) {
         goto SPACE_FAILURE;
@@ -139,44 +119,56 @@ SPACE_FAILURE:
     return (false);
 }
 
-uint32_t configGetRawIdleVacuum(void) {
+uint32_t configGetTh0Timeout(void) {
     struct config       config;
 
     storageRead(Storage, &config);
 
-    return (config.rawIdleVacuum);
+    return (config.th[0].time);
 }
 
-uint32_t configGetFirstThTimeout(void) {
-    struct config       config;
+uint32_t configGetTh0DefaultTimeout(void) {
 
-    storageRead(Storage, &config);
-
-    return (config.test[0].timeoutMs);
+    return (CONFIG_DEF_TH0_TIMEOUT);
 }
 
-uint32_t configGetFirstThRawVacuum(void) {
+uint32_t configGetTh0RawVacuum(void) {
     struct config       config;
 
     storageRead(Storage, &config);
 
-    return (config.test[0].rawVacuum);
+    return (config.th[0].rawVacuum);
 }
 
-uint32_t configGetSecondThTimeout(void) {
-    struct config       config;
+uint32_t configGetTh0DefaultRawVacuum(void) {
 
-    storageRead(Storage, &config);
-
-    return (config.test[1].timeoutMs);
+    return (CONFIG_DEF_TH0_RAW_VACUUM);
 }
 
-uint32_t configGetSecondThRawVacuum(void) {
+uint32_t configGetTh1Timeout(void) {
     struct config       config;
 
     storageRead(Storage, &config);
 
-    return (config.test[1].rawVacuum);
+    return (config.th[1].time);
+}
+
+uint32_t configGetTh1DefaultTimeout(void) {
+
+    return (CONFIG_DEF_TH1_TIMEOUT);
+}
+
+uint32_t configGetTh1RawVacuum(void) {
+    struct config       config;
+
+    storageRead(Storage, &config);
+
+    return (config.th[1].rawVacuum);
+}
+
+uint32_t configGetTh1DefaultRawVacuum(void) {
+
+    return (CONFIG_DEF_TH1_RAW_VACUUM);
 }
 
 bool configIsPasswordCharValid(char character, uint8_t position) {
@@ -197,3 +189,4 @@ uint32_t configPasswordLength(void) {
 
     return (sizeof(((struct config *)0)->password));
 }
+
