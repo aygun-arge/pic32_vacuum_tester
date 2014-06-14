@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "app_storage.h"
 #include "app_data_log.h"
 #include "app_time.h"
 #include "app_user.h"
@@ -27,10 +28,10 @@ struct appDataLog {
     struct appTime      timestamp;
     struct appUser      user;
     uint32_t            numOfTests;
-    uint32_t            firstThresholdRaw;
-    uint32_t            firstThresholdPeriodMs;
-    uint32_t            secondThresholdRaw;
-    uint32_t            secondThresholdPeriodMs;
+    struct thData {
+        uint32_t            rawMaxValue;
+        uint32_t            time;
+    }                   th[2];
     bool                hasPassed;
 };
 
