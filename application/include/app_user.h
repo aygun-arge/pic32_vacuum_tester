@@ -14,10 +14,16 @@
 extern "C" {
 #endif
 
+#define APPUSER_ADMINISTRATOR_ID            0
+#define APPUSER_OPERATOR_ID                 1
+
 struct appUser {
-    char *              name;
+    const char *        name;
     uint32_t            id;
 };
+
+void appUserSetCurrent(uint32_t id);
+void appUserGetCurrent(struct appUser * user);
 
 #ifdef	__cplusplus
 }
