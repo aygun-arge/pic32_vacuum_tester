@@ -409,4 +409,18 @@ uint32_t flashGetSectorBase(uint32_t address) {
     }
 }
 
+uint32_t flashNSectors(uint32_t address) {
+    if (FlashPhy.nEraseBlockRegions == 1) {
 
+        return (FlashPhy.ebr[0].nSectors);
+    } else {
+
+        if (address < (FlashPhy.ebr[0].sectorSize * FlashPhy.ebr[0].nSectors)) {
+
+            return (FlashPhy.ebr[0].nSectors);
+        } else {
+
+            return (FlashPhy.ebr[1].nSectors);
+        }
+    }
+}
