@@ -437,6 +437,7 @@
         <property key="UART1" value="true"/>
         <property key="UART2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
@@ -1283,7 +1284,7 @@
           <property key="generate-micro-compressed-code" value="false"/>
           <property key="isolate-each-function" value="true"/>
           <property key="make-warnings-into-errors" value="false"/>
-          <property key="optimization-level" value="-Os"/>
+          <property key="optimization-level" value=""/>
           <property key="place-data-into-section" value="true"/>
           <property key="post-instruction-scheduling" value="default"/>
           <property key="pre-instruction-scheduling" value="default"/>
