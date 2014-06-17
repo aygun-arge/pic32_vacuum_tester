@@ -19,11 +19,20 @@ extern "C" {
 #endif
 
 struct storageSpace;
+struct storageArray;
 
 struct storageEntry {
     uint32_t            signature;
     size_t              size;
     struct storageSpace ** space;
+};
+
+struct storageArray {
+        uint32_t            base;
+        uint32_t            size;
+        uint32_t            nSectors;
+        uint32_t            n
+    }                   phy;
 };
 
 void initStorageModule(esMem * memory);
