@@ -127,11 +127,7 @@ enum localEvents {
     FIRST_TH_REFRESH_,
     SECOND_TH_TIMEOUT_,
     SECOND_TH_REFRESH_,
-    TEST_RESULTS_NOTIFY_REFRESH_,
     TEST_RESULTS_NOTIFY_TIMEOUT_,
-    SETTINGS_REFRESH_,
-    SETTINGS_AUTH_REFRESH_,
-    SETTINGS_ABOUT_REFRESH_,
     SETTINGS_SENSZLH_REFRESH_,
     EXPORT_INSERT_REFRESH_,
     EXPORT_CHOOSE_REFRESH_,
@@ -324,7 +320,8 @@ static void constructButtonBack(enum buttonBackPos position) {
 }
 
 static void screenWelcome(void) {
-    Ft_Gpu_Hal_WrMem(&Gpu, RAM_G + 131072L, (const uint8_t *)ManufacturerLogo, ManufacturerLogoInfo.size);              /* copy data continuously into RAM_G memory */
+    /* copy data continuously into RAM_G memory */
+    Ft_Gpu_Hal_WrMem(&Gpu, RAM_G + 131072L, (const uint8_t *)ManufacturerLogo, ManufacturerLogoInfo.size);              
     gpuBegin();
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,0,0));
@@ -535,53 +532,41 @@ static void screenExportChoose(const union state * state) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
 
     if (state->exportChoose.focus == 0) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_MONTH]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 80, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_MONTH]);
     }
 
     if (state->exportChoose.focus == 1) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_DAY]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 80, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_DAY]);
     }
 
     if (state->exportChoose.focus == 2) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_YEAR]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.begin[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 80, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.begin[EXPORT_YEAR]);
     }
     Ft_Gpu_CoCmd_Text(&Gpu, 125,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
     Ft_Gpu_CoCmd_Text(&Gpu, 175,  80,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
 
     if (state->exportChoose.focus == 3) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_MONTH]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_MONTH]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_MONTH]);
     }
 
     if (state->exportChoose.focus == 4) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_DAY]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_DAY]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_DAY]);
     }
 
     if (state->exportChoose.focus == 5) {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N2_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N2_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_YEAR]);
     } else {
-        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N1_FONT_SIZE, OPT_CENTER,
-            state->exportChoose.end[EXPORT_YEAR]);
+        Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, DEF_N1_FONT_SIZE, OPT_CENTER, state->exportChoose.end[EXPORT_YEAR]);
     }
     Ft_Gpu_CoCmd_Text(&Gpu, 125,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
     Ft_Gpu_CoCmd_Text(&Gpu, 175,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
@@ -695,8 +680,7 @@ static void screenSettingsCalibLcd(void) {
     constructBackground(0);
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 80, DEF_B1_FONT_SIZE, OPT_CENTER, "Touch Calibration");
-    Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY,
-        "Please tap on the dot");
+    Ft_Gpu_CoCmd_Text(&Gpu,DISP_WIDTH / 2 ,DISP_HEIGHT/2,26,OPT_CENTERX|OPT_CENTERY, "Please tap on the dot");
     Ft_Gpu_CoCmd_Calibrate(&Gpu, 0);
     gpuEnd();
 }
@@ -720,17 +704,13 @@ static void screenSettingsCalibSensorZLH(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Calibrate Sensor");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "Apply vacuum");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->calibSensZHL.vacuumTarget);
-    Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER,
-        state->calibSensZHL.rawVacuum);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "Apply vacuum");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->calibSensZHL.vacuumTarget);
+    Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER, state->calibSensZHL.rawVacuum);
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10,
-        0, state->calibSensZHL.rawVacuum, state->calibSensZHL.rawFullScale);
+    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
+        state->calibSensZHL.rawVacuum, state->calibSensZHL.rawFullScale);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Save");
     constructButtonBack(DOWN_LEFT);
@@ -769,10 +749,7 @@ static esAction stateWakeUpDisplay(void * space, const esEvent * event) {
                 return (ES_STATE_TRANSITION(stateSetupTouch));
             } else if (wspace->state.wakeUpLcd.retry != 0u) {
                 wspace->state.wakeUpLcd.retry--;
-                appTimerStart(
-                    &wspace->timeout,
-                    ES_VTMR_TIME_TO_TICK_MS(10),
-                    WAKEUP_TIMEOUT_);
+                appTimerStart( &wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(10), WAKEUP_TIMEOUT_);
 
                 return (ES_STATE_HANDLED());
             } else {
@@ -879,10 +856,7 @@ static esAction stateZeroCalib(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_ZERO_CALIB_MS),
-                ZERO_CALIB_WAIT_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(CONFIG_ZERO_CALIB_MS), ZERO_CALIB_WAIT_);
             wspace->state.progress.background  = 0;
             wspace->state.progress.title       = "Zero calibration";
             wspace->state.progress.description = "Please wait...";
@@ -1105,8 +1079,7 @@ static esAction stateTestSecondTh(void * space, const esEvent * event) {
                     }
                      screenTestTh1(&wspace->state);
                 }
-                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                    SECOND_TH_REFRESH_);
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), SECOND_TH_REFRESH_);
             } else {
                 motorDisable();
                 wspace->state.test.th[1].state = TEST_CANCELED;
@@ -1193,8 +1166,7 @@ static esAction stateTestResults(void * space, const esEvent * event) {
             wspace->state.test.notification++;
 
             if (*wspace->state.test.notification != 0) {
-                appTimerStart(
-                    &wspace->timeout,
+                appTimerStart(&wspace->timeout, 
                     ES_VTMR_TIME_TO_TICK_MS(*wspace->state.test.notification),
                     TEST_RESULTS_NOTIFY_TIMEOUT_);
             }
@@ -1602,10 +1574,7 @@ static esAction stateSettingsCalibSensH(void * space, const esEvent * event) {
             wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
             wspace->state.calibSensZHL.rawVacuum    = min(getDutRawValue(), wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                SETTINGS_SENSZLH_REFRESH_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS), SETTINGS_SENSZLH_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
