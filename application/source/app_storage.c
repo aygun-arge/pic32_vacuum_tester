@@ -16,7 +16,7 @@
 #define STORAGE_DATA_ADDRESS(address)   (address + sizeof(struct storageSpace))
 
 struct __attribute__((packed)) storageSpace {
-    struct physicalInfo {
+    struct spacePhysicalInfo {
         uint32_t            base;
         size_t              size;
     }                   phy;
@@ -49,6 +49,10 @@ esError storageRegisterEntry(const struct storageEntry * entry) {
         }
         phySize = nextAlignedAddress - prevAlignedAddress;
     } while (phySize < entry->size);
+
+    if (flashGetSectorSize(prevAlignedAddress) != 0x1000) {
+        goto STORAGE_REGISTER_NO_SPACE;
+    }
 
     if (esMemAlloc(Memory, sizeof(struct storageSpace), (void **)entry->space)) {
         goto STORAGE_REGISTER_ALLOC;
@@ -170,3 +174,34 @@ esError storageGetSize(struct storageSpace * space, size_t * size) {
     return (ES_ERROR_NONE);
 }
 
+void storageRegisterArray(struct storageArray * array, size_t size) {
+    uint32_t largeSector;
+
+    largeSector = 0;
+
+    while (flashGetSectorSize(largeSector) == 0x1000) {
+        largeSector = flashGetNextSector(largeSector);
+    }
+
+    array->phy.base     = largeSector;
+    array->phy.size     = size;
+}
+
+uint32_t storageArrayNBlocks(const struct storageArray * array) {
+    return (flashNSectors(array->phy.base));
+}
+
+uint32_t storageArrayNEntriesPerBlock(const struct storageArray * array) {
+    return (flashGetSectorSize(array->phy.base) / array->phy.size);
+}
+
+uint32_t storageArrayNEntries(const struct storageArray * array) {
+
+    return (storageArrayNBlocks(array) * storageArrayNEntriesPerBlock(array));
+}
+
+esError storageArrayRead(const struct storageArray * array, uint32_t block, uint32_t entryNo) {
+    uint32_t                    sector;
+
+    sector = array->phy.base;
+}

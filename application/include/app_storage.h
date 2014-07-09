@@ -28,10 +28,11 @@ struct storageEntry {
 };
 
 struct storageArray {
+    struct storageArrayPhy {
         uint32_t            base;
         uint32_t            size;
         uint32_t            nSectors;
-        uint32_t            n
+        uint32_t            n;
     }                   phy;
 };
 
