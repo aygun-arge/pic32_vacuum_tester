@@ -38,10 +38,10 @@ struct nvStorageData {
 
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
 
-static esAction stateInit               (struct wspace *, const esEvent *);
-static esAction stateIdle               (struct wspace *, const esEvent *);
-static esAction stateCalibrate          (struct wspace *, const esEvent *);
-static esAction stateTouch              (struct wspace *, const esEvent *);
+static esAction stateInit               (void *, const esEvent *);
+static esAction stateIdle               (void *, const esEvent *);
+static esAction stateCalibrate          (void *, const esEvent *);
+static esAction stateTouch              (void *, const esEvent *);
 
 static void touchHandler(void);
 
@@ -73,7 +73,8 @@ const struct storageEntry TouchStorage = {
 
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
-static esAction stateInit(struct wspace * space, const esEvent * event) {
+static esAction stateInit(void * space, const esEvent * event) {
+    (void)space;
     
     switch (event->id) {
         case ES_INIT: {
@@ -87,7 +88,8 @@ static esAction stateInit(struct wspace * space, const esEvent * event) {
     }
 }
 
-static esAction stateIdle(struct wspace * space, const esEvent * event) {
+static esAction stateIdle(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
 
@@ -99,10 +101,7 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
             if (storageRead(Storage, &storageData)) {
                 goto SPACE_FAILURE;
             }
-            ES_ENSURE(error = esEventCreate(
-                sizeof(struct touchStatusEvent),
-                EVT_TOUCH_STATUS,
-                &response));
+            ES_ENSURE(error = esEventCreate(sizeof(struct touchStatusEvent), EVT_TOUCH_STATUS, &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_INITIALIZED;
 
             if (error == ES_ERROR_NONE) {
@@ -112,10 +111,7 @@ static esAction stateIdle(struct wspace * space, const esEvent * event) {
 
             return (ES_STATE_HANDLED());
 SPACE_FAILURE:
-            ES_ENSURE(error = esEventCreate(
-                sizeof(struct touchStatusEvent),
-                EVT_TOUCH_STATUS,
-                &response));
+            ES_ENSURE(error = esEventCreate(sizeof(struct touchStatusEvent), EVT_TOUCH_STATUS, &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_NOT_INITIALIZED;
 
             if (error == ES_ERROR_NONE) {
@@ -128,12 +124,12 @@ SPACE_FAILURE:
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_CALIBRATE : {
-            space->client = event->producer;
+            wspace->client = event->producer;
             
             return (ES_STATE_TRANSITION(stateCalibrate));
         }
         case EVT_TOUCH_ENABLE : {
-            space->client = event->producer;
+            wspace->client = event->producer;
 
             return (ES_STATE_TRANSITION(stateTouch));
         }
@@ -144,7 +140,9 @@ SPACE_FAILURE:
     }
 }
 
-static esAction stateCalibrate(struct wspace * space, const esEvent * event) {
+static esAction stateCalibrate(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+    
     switch (event->id) {
         case ES_INIT : {
             struct nvStorageData storageData;
@@ -157,22 +155,16 @@ static esAction stateCalibrate(struct wspace * space, const esEvent * event) {
             if (error != ES_ERROR_NONE) {
                 goto SPACE_FAILURE;
             }
-            ES_ENSURE(error = esEventCreate(
-                sizeof(struct touchStatusEvent),
-                EVT_TOUCH_STATUS,
-                &response));
+            ES_ENSURE(error = esEventCreate(sizeof(struct touchStatusEvent), EVT_TOUCH_STATUS, &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_CALIBRATED;
 
             if (error == ES_ERROR_NONE) {
-                ES_ENSURE(esEpaSendEvent(space->client, response));
+                ES_ENSURE(esEpaSendEvent(wspace->client, response));
             }
 
             return (ES_STATE_TRANSITION(stateIdle));
 SPACE_FAILURE:
-            ES_ENSURE(error = esEventCreate(
-                sizeof(struct touchStatusEvent),
-                EVT_TOUCH_STATUS,
-                &response));
+            ES_ENSURE(error = esEventCreate(sizeof(struct touchStatusEvent), EVT_TOUCH_STATUS, &response));
             ((struct touchStatusEvent *)response)->status = TOUCH_NOT_CALIBRATED;
 
             if (error == ES_ERROR_NONE) {
@@ -189,12 +181,13 @@ SPACE_FAILURE:
     }
 }
 
-static esAction stateTouch(struct wspace * space, const esEvent * event) {
+static esAction stateTouch(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
             gpuTouchEnable(touchHandler);
-            space->prevTag = 0;
+            wspace->prevTag = 0;
 
             return (ES_STATE_HANDLED());
         }
@@ -216,21 +209,18 @@ static esAction stateTouch(struct wspace * space, const esEvent * event) {
 
             tag = gpuGetTouchTag();
 
-            if ((space->prevTag != 0u) && (tag == 0u)) {
+            if ((wspace->prevTag != 0u) && (tag == 0u)) {
                 esError             error;
                 struct touchEvent * touchEvent;
 
-                ES_ENSURE(error = esEventCreate(
-                    sizeof(struct touchEvent),
-                    EVT_TOUCH_TAG,
-                    (esEvent **)&touchEvent));
+                ES_ENSURE(error = esEventCreate(sizeof(struct touchEvent), EVT_TOUCH_TAG, (esEvent **)&touchEvent));
 
                 if (error == ES_ERROR_NONE) {
-                    touchEvent->tag = space->prevTag;
-                    ES_ENSURE(esEpaSendEvent(space->client, (esEvent *)touchEvent));
+                    touchEvent->tag = wspace->prevTag;
+                    ES_ENSURE(esEpaSendEvent(wspace->client, (esEvent *)touchEvent));
                 }
             }
-            space->prevTag = tag;
+            wspace->prevTag = tag;
 
             return (ES_STATE_HANDLED());
         }

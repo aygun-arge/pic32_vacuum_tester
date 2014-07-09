@@ -216,31 +216,31 @@ static void screenMain(const union state * state);
 static void screenExportInsert(void);
 static void screenSettings(void);
 
-static esAction stateInit               (struct wspace *, const esEvent *);
-static esAction stateWakeUpDisplay      (struct wspace *, const esEvent *);
-static esAction stateSetupTouch         (struct wspace *, const esEvent *);
-static esAction stateWelcome            (struct wspace *, const esEvent *);
-static esAction stateZeroCalib          (struct wspace *, const esEvent *);
-static esAction stateMain               (struct wspace *, const esEvent *);
-static esAction stateProgress           (struct wspace *, const esEvent * );
-static esAction stateTestFirstTh        (struct wspace *, const esEvent *);
-static esAction stateTestSecondTh       (struct wspace *, const esEvent *);
-static esAction stateTestResults        (struct wspace *, const esEvent *);
-static esAction stateTestResultsSaving  (struct wspace *, const esEvent *);
-static esAction stateSettings           (struct wspace *, const esEvent *);
-static esAction stateSettingsAbout      (struct wspace *, const esEvent *);
-static esAction stateSettingsAuthorize  (struct wspace *, const esEvent *);
-static esAction stateSettingsAdmin      (struct wspace *, const esEvent *);
-static esAction stateSettingsClock      (struct wspace *, const esEvent *);
-static esAction stateSettingsCalibLcd   (struct wspace *, const esEvent *);
-static esAction stateSettingsCalibSens  (struct wspace *, const esEvent *);
-static esAction stateSettingsCalibSensL (struct wspace *, const esEvent *);
-static esAction stateSettingsCalibSensH (struct wspace *, const esEvent *);
-static esAction stateExport             (struct wspace *, const esEvent *);
-static esAction stateExportInsert       (struct wspace *, const esEvent *);
-static esAction stateExportMount        (struct wspace *, const esEvent *);
-static esAction stateExportChoose       (struct wspace *, const esEvent *);
-static esAction stateExportSaving       (struct wspace *, const esEvent *);
+static esAction stateInit               (void *, const esEvent *);
+static esAction stateWakeUpDisplay      (void *, const esEvent *);
+static esAction stateSetupTouch         (void *, const esEvent *);
+static esAction stateWelcome            (void *, const esEvent *);
+static esAction stateZeroCalib          (void *, const esEvent *);
+static esAction stateMain               (void *, const esEvent *);
+static esAction stateProgress           (void *, const esEvent *);
+static esAction stateTestFirstTh        (void *, const esEvent *);
+static esAction stateTestSecondTh       (void *, const esEvent *);
+static esAction stateTestResults        (void *, const esEvent *);
+static esAction stateTestResultsSaving  (void *, const esEvent *);
+static esAction stateSettings           (void *, const esEvent *);
+static esAction stateSettingsAbout      (void *, const esEvent *);
+static esAction stateSettingsAuthorize  (void *, const esEvent *);
+static esAction stateSettingsAdmin      (void *, const esEvent *);
+static esAction stateSettingsClock      (void *, const esEvent *);
+static esAction stateSettingsCalibLcd   (void *, const esEvent *);
+static esAction stateSettingsCalibSens  (void *, const esEvent *);
+static esAction stateSettingsCalibSensL (void *, const esEvent *);
+static esAction stateSettingsCalibSensH (void *, const esEvent *);
+static esAction stateExport             (void *, const esEvent *);
+static esAction stateExportInsert       (void *, const esEvent *);
+static esAction stateExportMount        (void *, const esEvent *);
+static esAction stateExportChoose       (void *, const esEvent *);
+static esAction stateExportSaving       (void *, const esEvent *);
 
 /*=======================================================  LOCAL VARIABLES  ==*/
 
@@ -324,15 +324,14 @@ static void constructButtonBack(enum buttonBackPos position) {
 }
 
 static void screenWelcome(void) {
-    Ft_Gpu_Hal_WrMem(&Gpu, RAM_G + 131072L, (const uint8_t *)ManufacturerLogo, 
-        ManufacturerLogoInfo.size);                                                                 /* copy data continuously into RAM_G memory */
+    Ft_Gpu_Hal_WrMem(&Gpu, RAM_G + 131072L, (const uint8_t *)ManufacturerLogo, ManufacturerLogoInfo.size);              /* copy data continuously into RAM_G memory */
     gpuBegin();
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR_COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, CLEAR(1,0,0));
     Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_HANDLE(13));
     Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_SOURCE(131072L));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_LAYOUT(ManufacturerLogoInfo.format,
-        ManufacturerLogoInfo.linestride, ManufacturerLogoInfo.height));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_LAYOUT(ManufacturerLogoInfo.format, ManufacturerLogoInfo.linestride,
+        ManufacturerLogoInfo.height));
     Ft_Gpu_Hal_WrCmd32(&Gpu, BITMAP_SIZE(NEAREST, BORDER, BORDER, ManufacturerLogoInfo.pixelsX,
         ManufacturerLogoInfo.pixelsY));
     Ft_Gpu_Hal_WrCmd32(&Gpu, BEGIN(BITMAPS));
@@ -404,14 +403,11 @@ static void screenTestTh0(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Test in progress");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->test.th[0].rawMaxValue);
-    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10,
-        0, state->test.th[0].rawMaxValue, state->test.rawIdleVacuum);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
+    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
+      state->test.th[0].rawMaxValue, state->test.rawIdleVacuum);
     gpuEnd();
 }
 
@@ -419,21 +415,15 @@ static void screenTestTh1(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Test in progress");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->test.th[0].rawMaxValue);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
     Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, "PASSED");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "Second threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->test.th[1].rawMaxValue);
-    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_2_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10,
-        0, state->test.th[1].rawMaxValue, state->test.rawIdleVacuum);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "Second threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[1].rawMaxValue);
+    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_2_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
+      state->test.th[1].rawMaxValue, state->test.rawIdleVacuum);
     gpuEnd();
 }
 
@@ -459,12 +449,9 @@ static void screenTestResults(const union state * state) {
         constructBackground(0);
     }
     constructTitle(text);
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->test.th[0].rawMaxValue);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
 
     if (state->test.th[0].state == TEST_VALID) {
         text = "PASSED";
@@ -474,12 +461,9 @@ static void screenTestResults(const union state * state) {
         text = "FAILED";
     }
     Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, text);
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "Second threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY,
-        state->test.th[1].rawMaxValue);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "Second threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[1].rawMaxValue);
 
     if (state->test.th[1].state == TEST_VALID) {
         text = "PASSED";
@@ -755,7 +739,9 @@ static void screenSettingsCalibSensorZLH(const union state * state) {
 
 /*--  End of SUPPORT  --------------------------------------------------------*/
 
-static esAction stateInit(struct wspace * wspace, const esEvent * event) {
+static esAction stateInit(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
     switch (event->id) {
         case ES_INIT: {
             wspace->state.wakeUpLcd.retry = 100u;
@@ -771,7 +757,9 @@ static esAction stateInit(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event) {
+static esAction stateWakeUpDisplay(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
     switch (event->id) {
         case ES_INIT : {
 
@@ -803,7 +791,8 @@ static esAction stateWakeUpDisplay(struct wspace * wspace, const esEvent * event
     }
 }
 
-static esAction stateSetupTouch(struct wspace * wspace, const esEvent * event) {
+static esAction stateSetupTouch(void * space, const esEvent * event) {
+    (void)space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -852,7 +841,9 @@ static esAction stateSetupTouch(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
+static esAction stateWelcome(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
     switch (event->id) {
         case ES_ENTRY: {
             screenWelcome();
@@ -883,7 +874,8 @@ static esAction stateWelcome(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateZeroCalib(struct wspace * wspace, const esEvent * event) {
+static esAction stateZeroCalib(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -911,7 +903,9 @@ static esAction stateZeroCalib(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateMain(struct wspace * wspace, const esEvent * event) {
+static esAction stateMain(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+    
     switch (event->id) {
         case ES_ENTRY: {
             struct appTime time;
@@ -989,7 +983,8 @@ static esAction stateMain(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateProgress(struct wspace * wspace, const esEvent * event) {
+static esAction stateProgress(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1012,7 +1007,8 @@ static esAction stateProgress(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) {
+static esAction stateTestFirstTh(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1086,7 +1082,8 @@ static esAction stateTestFirstTh(struct wspace * wspace, const esEvent * event) 
     }
 }
 
-static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event) {
+static esAction stateTestSecondTh(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1159,7 +1156,8 @@ static esAction stateTestSecondTh(struct wspace * wspace, const esEvent * event)
     }
 }
 
-static esAction stateTestResults(struct wspace * wspace, const esEvent * event) {
+static esAction stateTestResults(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -1234,7 +1232,8 @@ static esAction stateTestResults(struct wspace * wspace, const esEvent * event) 
     }
 }
 
-static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * event) {
+static esAction stateTestResultsSaving(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1269,7 +1268,9 @@ static esAction stateTestResultsSaving(struct wspace * wspace, const esEvent * e
     }
 }
 
-static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettings(void * space, const esEvent * event) {
+    (void)space;
+
     switch (event->id) {
         case ES_ENTRY: {
             screenSettings();
@@ -1312,7 +1313,9 @@ static esAction stateSettings(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsAbout(void * space, const esEvent * event) {
+    (void)space;
+
     switch (event->id) {
         case ES_ENTRY: {
             screenSettingsAbout();
@@ -1336,7 +1339,8 @@ static esAction stateSettingsAbout(struct wspace * wspace, const esEvent * event
     }
 }
 
-static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsAuthorize(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -1386,7 +1390,8 @@ static esAction stateSettingsAuthorize(struct wspace * wspace, const esEvent * e
     }
 }
 
-static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsAdmin(void * space, const esEvent * event) {
+    (void)space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1427,7 +1432,8 @@ static esAction stateSettingsAdmin(struct wspace * wspace, const esEvent * event
     }
 }
 
-static esAction stateSettingsCalibLcd(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsCalibLcd(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1464,7 +1470,8 @@ static esAction stateSettingsCalibLcd(struct wspace * wspace, const esEvent * ev
     }
 }
 
-static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsCalibSens(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -1535,7 +1542,8 @@ static esAction stateSettingsCalibSens(struct wspace * wspace, const esEvent * e
     }
 }
 
-static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsCalibSensL(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -1616,7 +1624,8 @@ static esAction stateSettingsCalibSensL(struct wspace * wspace, const esEvent * 
     }
 }
 
-static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsCalibSensH(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
@@ -1699,7 +1708,8 @@ static esAction stateSettingsCalibSensH(struct wspace * wspace, const esEvent * 
     }
 }
 
-static esAction stateSettingsClock(struct wspace * wspace, const esEvent * event) {
+static esAction stateSettingsClock(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1831,7 +1841,9 @@ static esAction stateSettingsClock(struct wspace * wspace, const esEvent * event
     }
 }
 
-static esAction stateExport(struct wspace * wspace, const esEvent * event) {
+static esAction stateExport(void * space, const esEvent * event) {
+    (void)space;
+
     switch (event->id) {
         case ES_ENTRY: {
 
@@ -1853,7 +1865,8 @@ static esAction stateExport(struct wspace * wspace, const esEvent * event) {
     }
 }
 
-static esAction stateExportInsert(struct wspace * wspace, const esEvent * event) {
+static esAction stateExportInsert(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -1896,7 +1909,9 @@ static esAction stateExportInsert(struct wspace * wspace, const esEvent * event)
     }
 }
 
-static esAction stateExportMount(struct wspace * wspace, const esEvent * event) {
+static esAction stateExportMount(void * space, const esEvent * event) {
+    (void)space;
+
     switch (event->id) {
         case ES_ENTRY : {
             screenExportMount();
@@ -1919,7 +1934,8 @@ static esAction stateExportMount(struct wspace * wspace, const esEvent * event) 
     }
 }
 
-static esAction stateExportChoose(struct wspace * wspace, const esEvent * event) {
+static esAction stateExportChoose(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY: {
@@ -2002,7 +2018,9 @@ static esAction stateExportChoose(struct wspace * wspace, const esEvent * event)
     }
 }
 
-static esAction stateExportSaving(struct wspace * wspace, const esEvent * event) {
+static esAction stateExportSaving(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
     switch (event->id) {
         case ES_ENTRY: {
             screenExportSaving();
