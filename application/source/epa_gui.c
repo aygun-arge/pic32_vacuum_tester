@@ -1285,6 +1285,7 @@ static esAction stateSettings(void * space, const esEvent * event) {
                     return (ES_STATE_TRANSITION(stateSettingsAbout));
                 }
                 case 'U' : {
+#if (CONFIG_ALLWAYS_ASK_PASSWD == 0)
                     struct appUser user;
 
                     appUserGetCurrent(&user);
@@ -1294,6 +1295,9 @@ static esAction stateSettings(void * space, const esEvent * event) {
                     } else {
                         return (ES_STATE_TRANSITION(stateSettingsAuthorize));
                     }
+#else
+                    return (ES_STATE_TRANSITION(stateSettingsAuthorize));
+#endif
                 }
                 case 'B' : {
 

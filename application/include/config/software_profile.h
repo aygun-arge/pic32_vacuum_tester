@@ -24,6 +24,8 @@ extern "C" {
 
 #define BUILD_TIME                      __TIME__
 #define BUILD_DATE                      __DATE__
+
+#define CONFIG_ALLWAYS_ASK_PASSWD       1
     
 #ifdef	__cplusplus
 }
