@@ -968,10 +968,7 @@ static esAction stateMain(void * space, const esEvent * event) {
             snprintBatteryStatus(wspace->state.main.battery);
             wspace->state.main.isDutInPlace = isDutDetected();
             screenMain(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
-                MAIN_REFRESH_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS), MAIN_REFRESH_);
             
             return (ES_STATE_HANDLED());
         }
@@ -988,10 +985,7 @@ static esAction stateProgress(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(wspace->state.progress.timeout),
-                PROGRESS_TIMEOUT_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(wspace->state.progress.timeout), PROGRESS_TIMEOUT_);
             screenProgress(&wspace->state);
 
             return (ES_STATE_HANDLED());
@@ -1013,14 +1007,8 @@ static esAction stateTestFirstTh(void * space, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             wspace->state.test.th[0].state = TEST_STARTED;
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(wspace->state.test.th[0].time),
-                FIRST_TH_TIMEOUT_);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                FIRST_TH_REFRESH_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(wspace->state.test.th[0].time), FIRST_TH_TIMEOUT_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), FIRST_TH_REFRESH_);
             screenTestTh0(&wspace->state);
             motorEnable();
 
@@ -1045,16 +1033,14 @@ static esAction stateTestFirstTh(void * space, const esEvent * event) {
                     if (rawVacuum >= wspace->state.test.th[0].rawThValue) {
                         wspace->state.test.th[0].state = TEST_VALID;
                         wspace->state.test.th[0].time -= appTimerGetRemaining(&wspace->timeout);
-                        wspace->state.test.th[1].rawMaxValue = wspace->state.test.th[0].rawMaxValue; /* Set the maxumum value for the second pass, too       */
+                        /* Set the maxumum value for the second pass, too. */
+                        wspace->state.test.th[1].rawMaxValue = wspace->state.test.th[0].rawMaxValue; 
 
                         return (ES_STATE_TRANSITION(stateTestSecondTh));
                     }
                     screenTestTh0(&wspace->state);
                 }
-                appTimerStart(
-                    &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                    FIRST_TH_REFRESH_);
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), FIRST_TH_REFRESH_);
             } else {
                 motorDisable();
                 wspace->state.test.th[0].state = TEST_CANCELED;
@@ -1088,14 +1074,8 @@ static esAction stateTestSecondTh(void * space, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             wspace->state.test.th[1].state = TEST_STARTED;
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(configGetTh1Timeout()),
-                SECOND_TH_TIMEOUT_);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
-                SECOND_TH_REFRESH_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(wspace->state.test.th[1].time), SECOND_TH_TIMEOUT_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), SECOND_TH_REFRESH_);
             screenTestTh1(&wspace->state);
             motorEnable();
 
@@ -1125,9 +1105,7 @@ static esAction stateTestSecondTh(void * space, const esEvent * event) {
                     }
                      screenTestTh1(&wspace->state);
                 }
-                appTimerStart(
-                    &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS),
                     SECOND_TH_REFRESH_);
             } else {
                 motorDisable();
@@ -1180,9 +1158,7 @@ static esAction stateTestResults(void * space, const esEvent * event) {
             buzzerMelody(wspace->state.test.notification);
             testToggleBackground(&wspace->state);
             screenTestResults(&wspace->state);
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(*wspace->state.test.notification),
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(*wspace->state.test.notification),
                 TEST_RESULTS_NOTIFY_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
@@ -1250,10 +1226,7 @@ static esAction stateTestResultsSaving(void * space, const esEvent * event) {
             appDataLogSave(&entry);
             appDataLogNumberOfEntries(&wspace->state.testReport.nEntries);
             screenTestSaving(&wspace->state);
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(1000),
-                WAKEUP_TIMEOUT_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(1000), WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1553,13 +1526,9 @@ static esAction stateSettingsCalibSensL(void * space, const esEvent * event) {
         case ES_ENTRY : {
             wspace->state.calibSensZHL.vacuumTarget = 5;
             wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
-            wspace->state.calibSensZHL.rawVacuum    = min(
-                getDutRawValue(),
-                wspace->rawIdleVacuum);
+            wspace->state.calibSensZHL.rawVacuum    = min(getDutRawValue(), wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 SETTINGS_SENSZLH_REFRESH_);
 
             return (ES_STATE_HANDLED());
@@ -1610,13 +1579,9 @@ static esAction stateSettingsCalibSensL(void * space, const esEvent * event) {
             }
         }
         case SETTINGS_SENSZLH_REFRESH_ : {
-            wspace->state.calibSensZHL.rawVacuum = min(
-                getDutRawValue(),
-                wspace->state.calibSensZHL.rawFullScale);
+            wspace->state.calibSensZHL.rawVacuum = min(getDutRawValue(), wspace->state.calibSensZHL.rawFullScale);
             screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 SETTINGS_SENSZLH_REFRESH_);
 
             return (ES_STATE_HANDLED());
@@ -1635,9 +1600,7 @@ static esAction stateSettingsCalibSensH(void * space, const esEvent * event) {
         case ES_ENTRY : {
             wspace->state.calibSensZHL.vacuumTarget = 10;
             wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
-            wspace->state.calibSensZHL.rawVacuum    = min(
-                getDutRawValue(),
-                wspace->rawIdleVacuum);
+            wspace->state.calibSensZHL.rawVacuum    = min(getDutRawValue(), wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
             appTimerStart(
                 &wspace->refresh,
@@ -1694,13 +1657,9 @@ static esAction stateSettingsCalibSensH(void * space, const esEvent * event) {
             }
         }
         case SETTINGS_SENSZLH_REFRESH_ : {
-            wspace->state.calibSensZHL.rawVacuum = min(
-                getDutRawValue(),
-                wspace->state.calibSensZHL.rawFullScale);
+            wspace->state.calibSensZHL.rawVacuum = min(getDutRawValue(), wspace->state.calibSensZHL.rawFullScale);
             screenSettingsCalibSensorZLH(&wspace->state);
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                 SETTINGS_SENSZLH_REFRESH_);
 
             return (ES_STATE_HANDLED());
@@ -1874,10 +1833,7 @@ static esAction stateExportInsert(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            appTimerStart(
-                &wspace->refresh,
-                ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
-                EXPORT_INSERT_REFRESH_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS), EXPORT_INSERT_REFRESH_);
             screenExportInsert();
 
             return (ES_STATE_HANDLED());
@@ -1888,9 +1844,7 @@ static esAction stateExportInsert(void * space, const esEvent * event) {
 
                 return (ES_STATE_TRANSITION(stateExportMount));
             } else {
-                appTimerStart(
-                    &wspace->refresh,
-                    ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
                     EXPORT_INSERT_REFRESH_);
 
                 return (ES_STATE_HANDLED());
@@ -2028,10 +1982,7 @@ static esAction stateExportSaving(void * space, const esEvent * event) {
     switch (event->id) {
         case ES_ENTRY: {
             screenExportSaving();
-            appTimerStart(
-                &wspace->timeout,
-                ES_VTMR_TIME_TO_TICK_MS(2000),
-                WAKEUP_TIMEOUT_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(2000), WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
