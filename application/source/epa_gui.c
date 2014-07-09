@@ -1116,7 +1116,7 @@ static esAction stateTestSecondTh(void * space, const esEvent * event) {
 
             return (ES_STATE_HANDLED());
         }
-        case WAKEUP_TIMEOUT_: {
+        case SECOND_TH_TIMEOUT_: {
 
             return (ES_STATE_TRANSITION(stateTestResults));
         }
