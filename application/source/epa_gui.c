@@ -903,8 +903,9 @@ static esAction stateMain(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'T' : {
                     wspace->state.test.count = 1u;
                     wspace->state.test.th[0].state       = TEST_NOT_EXECUTED;
@@ -1142,8 +1143,9 @@ static esAction stateTestResults(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
             
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'B' : {
 
                     return (ES_STATE_TRANSITION(stateTestResultsSaving));
@@ -1223,8 +1225,9 @@ static esAction stateSettings(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'A' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsAbout));
@@ -1272,8 +1275,9 @@ static esAction stateSettingsAbout(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            if (((const struct touchEvent *)event)->tag == 'B') {
+            if (touchEvent->tag == 'B') {
 
                 return (ES_STATE_TRANSITION(stateSettings));
             } else {
@@ -1300,9 +1304,12 @@ static esAction stateSettingsAuthorize(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG :{
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
             uint8_t     key;
 
-            switch (key = ((const struct touchEvent *)event)->tag) {
+            key = touchEvent->tag;
+
+            switch (key) {
                 case 'B' : {
                     
                     return (ES_STATE_TRANSITION(stateSettings));
@@ -1349,8 +1356,9 @@ static esAction stateSettingsAdmin(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'S' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibSens));
@@ -1429,8 +1437,9 @@ static esAction stateSettingsCalibSens(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'L' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibSensL));
@@ -1511,7 +1520,9 @@ static esAction stateSettingsCalibSensL(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
-            switch (((const struct touchEvent *)event)->tag) {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+
+            switch (touchEvent->tag) {
                 case 'S' : {
                     bool        isSaved;
 
@@ -1584,7 +1595,9 @@ static esAction stateSettingsCalibSensH(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
-            switch (((const struct touchEvent *)event)->tag) {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+
+            switch (touchEvent->tag) {
                 case 'S' : {
                     bool        isSaved;
 
@@ -1652,7 +1665,9 @@ static esAction stateSettingsClock(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
-            switch (((const struct touchEvent *)event)->tag) {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+
+            switch (touchEvent->tag) {
                 case '>' : {
                     if (wspace->state.settingsClock.focus == 6u) {
                         wspace->state.settingsClock.focus = 0u;
@@ -1820,8 +1835,9 @@ static esAction stateExportInsert(void * space, const esEvent * event) {
             }
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
             
-            if (((const struct touchEvent *)event)->tag == 'B') {
+            if (touchEvent->tag == 'B') {
 
                 return (ES_STATE_TRANSITION(stateMain));
             } else {
@@ -1892,8 +1908,9 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
             }
         }
         case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
 
-            switch (((const struct touchEvent *)event)->tag) {
+            switch (touchEvent->tag) {
                 case 'B': {
 
                     return (ES_STATE_TRANSITION(stateMain));
