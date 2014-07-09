@@ -13,6 +13,8 @@
 
 #define CONFIG_NUM_OF_CHANNELS          16
 
+#define CONFIG_NUM_OF_SAMPLES           4
+
 #if (CONFIG_ADC_FREQUENCY < 250)
 #define TMR3_PRESCALER                  3
 #elif (CONFIG_ADC_FREQUENCY < 500)
@@ -61,12 +63,13 @@
 #define T_CON_TCKPS(x)                  ((x) << 4)
 
 struct adcChannel {
-    int32_t             output;
+    int32_t             output[CONFIG_NUM_OF_SAMPLES];
     void             (* callback)(int32_t);
 };
 
 static uint32_t adcEnabledChannels;
 static uint32_t adcNumOfEnabledChannels;
+static uint32_t adcNumOfSamples;
 static struct adcChannel Channel[CONFIG_NUM_OF_CHANNELS];
 
 static void enableTmr(void) {
@@ -102,14 +105,13 @@ void initAdcDriver(void) {
     adcEnabledChannels      = 0u;
     adcNumOfEnabledChannels = 0u;
     IPC5CLR = IPC5_AD1_PRIORITY_Msk | IPC5_AD1_SUBPRIORITY_Msk;
-    IPC5SET = IPC5_AD1_PRIORITY(CONFIG_ADC_ISR_PRIORITY) |
-              IPC5_AD1_SUBPRIORITY(CONFIG_ADC_ISR_SUBPRIORITY);
+    IPC5SET = IPC5_AD1_PRIORITY(CONFIG_ADC_ISR_PRIORITY) | IPC5_AD1_SUBPRIORITY(CONFIG_ADC_ISR_SUBPRIORITY);
 }
 
 void adcEnableChannel(uint32_t id, void (* callback)(int32_t)) {
     id &= 0x1fu;
 
-    Channel[id].output   = 0u;
+    memset(&Channel[id].output, 0, sizeof(Channel[id].output));
     Channel[id].callback = callback;
 
     if (adcEnabledChannels != 0u) {
@@ -142,8 +144,15 @@ int32_t adcReadChannel(uint32_t id) {
     id &= 0x1fu;
 
     if ((adcEnabledChannels & (0x1u << id)) != 0u) {
+        int32_t         retval;
+        uint32_t        itr;
 
-        return (Channel[id].output);
+        for (retval = 0, itr = 0; itr < CONFIG_NUM_OF_SAMPLES; itr++) {
+            retval += Channel[id].output[itr];
+        }
+        retval /= CONFIG_NUM_OF_SAMPLES;
+
+        return (retval);
     } else {
 
         return (0);
@@ -165,13 +174,18 @@ void __ISR(_ADC_VECTOR) adcHandler(void) {
         }
 
         if (id < CONFIG_NUM_OF_CHANNELS) {
-            Channel[id].output = value;
+            Channel[id].output[adcNumOfSamples] = value;
 
             if (Channel[id].callback != NULL) {
                 Channel[id].callback(value);
             }
             id++;
         }
+    }
+    adcNumOfSamples++;
+
+    if (adcNumOfSamples >= CONFIG_NUM_OF_SAMPLES) {
+        adcNumOfSamples = 0;
     }
     IFS0CLR = IFS0_AD1IF;
 }
