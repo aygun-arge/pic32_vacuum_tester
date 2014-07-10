@@ -706,7 +706,8 @@ static void screenSettingsCalibSensorZLH(const union state * state) {
     constructTitle("Calibrate Sensor");
     Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "Apply vacuum");
     Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->calibSensZHL.vacuumTarget);
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
+        state->calibSensZHL.vacuumTarget);
     Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER, state->calibSensZHL.rawVacuum);
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
