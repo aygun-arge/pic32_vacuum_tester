@@ -583,10 +583,13 @@ static void screenSettings(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('A'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "About");
-
+#if (CONFIG_ALLWAYS_ASK_PASSWD == 0)
     if (user.id != APPUSER_ADMINISTRATOR_ID) {
         Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
     }
+#else
+    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(128, 48, 12));
+#endif
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
     constructButtonBack(DOWN_MIDDLE);
@@ -643,18 +646,6 @@ static void screenSettingsClock(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Clock");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
-    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Set");
-    constructButtonBack(DOWN_LEFT);
     textSize[0] = DEF_N1_FONT_SIZE;
     textSize[1] = DEF_N1_FONT_SIZE;
     textSize[2] = DEF_N1_FONT_SIZE;
@@ -672,6 +663,18 @@ static void screenSettingsClock(const union state * state) {
     Ft_Gpu_CoCmd_Number(&Gpu, 100, 140, textSize[4], OPT_CENTER, state->settingsClock.time.month);
     Ft_Gpu_CoCmd_Number(&Gpu, 150, 140, textSize[5], OPT_CENTER, state->settingsClock.time.day);
     Ft_Gpu_CoCmd_Number(&Gpu, 210, 140, textSize[6], OPT_CENTER, state->settingsClock.time.year);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
+    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Set");
+    constructButtonBack(DOWN_LEFT);
     gpuEnd();
 }
 
