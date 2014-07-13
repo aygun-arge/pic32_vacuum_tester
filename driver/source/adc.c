@@ -13,7 +13,7 @@
 
 #define CONFIG_NUM_OF_CHANNELS          16
 
-#define CONFIG_NUM_OF_SAMPLES           4
+#define CONFIG_NUM_OF_SAMPLES           8
 
 #if (CONFIG_ADC_FREQUENCY < 250)
 #define TMR3_PRESCALER                  3
