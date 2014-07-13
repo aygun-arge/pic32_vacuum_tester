@@ -32,7 +32,7 @@
 #define CONFIG_TEST_CANCEL_MS           5000
 #define CONFIG_TEST_FAIL_MS             5000
 #define CONFIG_TEST_OVERVIEW_MS         5000
-#define CONFIG_TEST_REFRESH_MS          20
+#define CONFIG_TEST_REFRESH_MS          10
 #define CONFIG_TOUCH_REFRESH_MS         20
 #define CONFIG_MAIN_REFRESH_MS          100
 
@@ -55,9 +55,12 @@
 #define POS_ROW_1_5                     100
 #define POS_ROW_2                       130
 #define POS_ROW_2_5                     160
+#define POS_COLUMN_2                    20
 #define POS_COLUMN_4                    40
+#define POS_COLUMN_13                   130
 #define POS_COLUMN_18                   180
 #define POS_COLUMN_25                   250
+#define POS_COLUMN_26                   260
 #define POS_COLUMN_HALF                 (DISP_WIDTH / 2)
 
 #define POS_TITLE_V                     30
@@ -95,6 +98,7 @@
     entry(stateTestFirstTh,         TOP)                                        \
     entry(stateTestSecondTh,        TOP)                                        \
     entry(stateTestResults,         TOP)                                        \
+    entry(stateTestResultsSavingToMain,   TOP)                                  \
     entry(stateTestResultsSaving,   TOP)                                        \
     entry(stateSettings,            TOP)                                        \
     entry(stateSettingsAbout,       TOP)                                        \
@@ -127,7 +131,6 @@ enum localEvents {
     FIRST_TH_REFRESH_,
     SECOND_TH_TIMEOUT_,
     SECOND_TH_REFRESH_,
-    TEST_RESULTS_NOTIFY_TIMEOUT_,
     SETTINGS_SENSZLH_REFRESH_,
     EXPORT_INSERT_REFRESH_,
     EXPORT_CHOOSE_REFRESH_,
@@ -168,11 +171,18 @@ struct wspace {
                 uint32_t            rawThValue;
                 uint32_t            time;
             }                   th[2];
-            enum testState      state;
             const uint8_t *     notification;
             uint32_t            rawIdleVacuum;
-            bool                isBackgroundEnabled;
             uint32_t            count;
+            struct testResults {
+                const char *        title;
+                const char *        button;
+                uint32_t            rawMax0Value;
+                const char *        state0;
+                uint32_t            rawMax1Value;
+                const char *        state1;
+                uint32_t            background;
+            }                   testResults;
         }                   test;
         struct testReport {
             uint32_t                nEntries;
@@ -222,6 +232,7 @@ static esAction stateProgress           (void *, const esEvent *);
 static esAction stateTestFirstTh        (void *, const esEvent *);
 static esAction stateTestSecondTh       (void *, const esEvent *);
 static esAction stateTestResults        (void *, const esEvent *);
+static esAction stateTestResultsSavingToMain  (void *, const esEvent *);
 static esAction stateTestResultsSaving  (void *, const esEvent *);
 static esAction stateSettings           (void *, const esEvent *);
 static esAction stateSettingsAbout      (void *, const esEvent *);
@@ -264,27 +275,6 @@ struct esEpa *           Gui;
 /*============================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
 /*--  SUPPORT  ---------------------------------------------------------------*/
-
-static enum testState evaluateTests(const union state * state) {
-    if ((state->test.th[0].state == TEST_VALID) && (state->test.th[1].state == TEST_VALID)) {
-        
-        return (TEST_VALID);
-    } else if ((state->test.th[0].state == TEST_CANCELED) || (state->test.th[1].state == TEST_CANCELED)) {
-        
-        return (TEST_CANCELED);
-    } else {
-
-        return (TEST_FAILED);
-    }
-}
-
-static void testToggleBackground(union state * state) {
-    if (state->test.isBackgroundEnabled == true) {
-        state->test.isBackgroundEnabled = false;
-    } else {
-        state->test.isBackgroundEnabled = true;
-    }
-}
 
 static void constructBackground(uint32_t background) {
     if (background == 0) {
@@ -400,11 +390,8 @@ static void screenTestTh0(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Test in progress");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
-    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
-      state->test.th[0].rawMaxValue, state->test.rawIdleVacuum);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_2,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "1st threshold");
+    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
     gpuEnd();
 }
 
@@ -412,68 +399,29 @@ static void screenTestTh1(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Test in progress");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, "PASSED");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "Second threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[1].rawMaxValue);
-    Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_2_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
-      state->test.th[1].rawMaxValue, state->test.rawIdleVacuum);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_2,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "2nd threshold");
+    Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
     gpuEnd();
 }
 
 static void screenTestResults(const union state * state) {
-    uint32_t            colorBackground;
-    const char *        text;
-
-    if (state->test.state == TEST_VALID) {
-        colorBackground = CLEAR_COLOR_RGB(16, 224, 16);
-        text            = "Test succeessful";
-    } else if (state->test.state == TEST_CANCELED) {
-        colorBackground = CLEAR_COLOR_RGB(224, 224, 16);
-        text            = "Test cancelled";
-    } else {
-        colorBackground = CLEAR_COLOR_RGB(224, 16, 16);
-        text            = "Test failed";
-    }
     gpuBegin();
-
-    if (state->test.isBackgroundEnabled) {
-        constructBackground(colorBackground);
-    } else {
-        constructBackground(0);
-    }
-    constructTitle(text);
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "First threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[0].rawMaxValue);
-
-    if (state->test.th[0].state == TEST_VALID) {
-        text = "PASSED";
-    } else if (state->test.th[0].state == TEST_CANCELED) {
-        text = "CANCELED";
-    } else {
-        text = "FAILED";
-    }
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, text);
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_4,   POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "Second threshold");
-    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
-    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_2, DEF_N1_FONT_SIZE, OPT_CENTERY, state->test.th[1].rawMaxValue);
-
-    if (state->test.th[1].state == TEST_VALID) {
-        text = "PASSED";
-    } else if (state->test.th[1].state == TEST_CANCELED) {
-        text = "CANCELED";
-    } else {
-        text = "FAILED";
-    }
-    Ft_Gpu_CoCmd_Text(&Gpu, POS_COLUMN_HALF,  POS_ROW_2_5, DEF_N1_FONT_SIZE, OPT_CENTER, text);
-    constructButtonBack(DOWN_LEFT);
+    constructBackground(state->test.testResults.background);
+    constructTitle(state->test.testResults.title);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_2,   POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "1st threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_13,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, 
+        state->test.testResults.rawMax0Value);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_26,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTER, state->test.testResults.state0);
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_2,   POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTERY, "2nd threshold");
+    Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_13,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
+    Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_18,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTERY,
+        state->test.testResults.rawMax1Value);
+    Ft_Gpu_CoCmd_Text(&Gpu,  POS_COLUMN_26,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, state->test.testResults.state1);
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Repeat");
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 140, 130, 80, DEF_N1_FONT_SIZE, 0, state->test.testResults.button);
+    constructButtonBack(DOWN_LEFT);
     gpuEnd();
 }
 
@@ -482,7 +430,7 @@ static void screenTestSaving(const union state * state) {
     constructBackground(0);
     constructTitle("Saving...");
     Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Number of records:");
-    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTER, state->testReport.nEntries);
+    Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTERY, state->testReport.nEntries);
     Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
     gpuEnd();
 }
@@ -911,16 +859,7 @@ static esAction stateMain(void * space, const esEvent * event) {
 
             switch (touchEvent->tag) {
                 case 'T' : {
-                    wspace->state.test.count = 1u;
-                    wspace->state.test.th[0].state       = TEST_NOT_EXECUTED;
-                    wspace->state.test.th[0].rawMaxValue = 0u;
-                    wspace->state.test.th[0].rawThValue  = configGetTh0RawVacuum();
-                    wspace->state.test.th[0].time        = configGetTh0Timeout();
-                    wspace->state.test.th[1].state       = TEST_NOT_EXECUTED;
-                    wspace->state.test.th[1].rawMaxValue = 0u;
-                    wspace->state.test.th[1].rawThValue  = configGetTh1RawVacuum();
-                    wspace->state.test.th[1].time        = configGetTh1Timeout();
-                    wspace->state.test.rawIdleVacuum     = wspace->rawIdleVacuum;
+                    wspace->state.test.count = 0u;
 
                     return (ES_STATE_TRANSITION(stateTestFirstTh));
                 }
@@ -985,7 +924,16 @@ static esAction stateTestFirstTh(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            wspace->state.test.th[0].state = TEST_STARTED;
+            wspace->state.test.count++;
+            wspace->state.test.th[0].state       = TEST_STARTED;
+            wspace->state.test.th[0].rawMaxValue = 0u;
+            wspace->state.test.th[0].rawThValue  = configGetTh0RawVacuum();
+            wspace->state.test.th[0].time        = configGetTh0Timeout();
+            wspace->state.test.th[1].state       = TEST_NOT_EXECUTED;
+            wspace->state.test.th[1].rawMaxValue = 0u;
+            wspace->state.test.th[1].rawThValue  = configGetTh1RawVacuum();
+            wspace->state.test.th[1].time        = configGetTh1Timeout();
+            wspace->state.test.rawIdleVacuum     = wspace->rawIdleVacuum;
             appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(wspace->state.test.th[0].time), FIRST_TH_TIMEOUT_);
             appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), FIRST_TH_REFRESH_);
             screenTestTh0(&wspace->state);
@@ -1017,14 +965,12 @@ static esAction stateTestFirstTh(void * space, const esEvent * event) {
 
                         return (ES_STATE_TRANSITION(stateTestSecondTh));
                     }
-                    screenTestTh0(&wspace->state);
                 }
                 appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), FIRST_TH_REFRESH_);
             } else {
                 motorDisable();
-                wspace->state.test.th[0].state = TEST_CANCELED;
 
-                return (ES_STATE_TRANSITION(stateTestResults));
+                return (ES_STATE_TRANSITION(stateMain));
             }
 
             return (ES_STATE_HANDLED());
@@ -1082,14 +1028,12 @@ static esAction stateTestSecondTh(void * space, const esEvent * event) {
 
                         return (ES_STATE_TRANSITION(stateTestResults));
                     }
-                     screenTestTh1(&wspace->state);
                 }
                 appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TEST_REFRESH_MS), SECOND_TH_REFRESH_);
             } else {
                 motorDisable();
-                wspace->state.test.th[1].state = TEST_CANCELED;
 
-                return (ES_STATE_TRANSITION(stateTestResults));
+                return (ES_STATE_TRANSITION(stateMain));
             }
 
             return (ES_STATE_HANDLED());
@@ -1117,27 +1061,42 @@ static esAction stateTestResults(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY : {
-            wspace->state.test.isBackgroundEnabled = false;
-            wspace->state.test.state = evaluateTests(&wspace->state);
+            wspace->state.test.testResults.rawMax0Value = wspace->state.test.th[0].rawMaxValue;
+            wspace->state.test.testResults.rawMax1Value = wspace->state.test.th[1].rawMaxValue;
 
-            switch (wspace->state.test.state) {
-                case TEST_VALID : {
-                    wspace->state.test.notification = SuccessNotification;
-                    break;
-                }
-                case TEST_CANCELED : {
-                    wspace->state.test.notification = ConfusedNotification;
-                    break;
-                }
-                default : {
-                    wspace->state.test.notification = FailNotification;
+            if (wspace->state.test.th[0].state == TEST_VALID) {
+                wspace->state.test.testResults.state0 = "PASSED";
+            } else {
+                wspace->state.test.testResults.state0 = "FAILED";
+            }
+
+            if (wspace->state.test.th[1].state == TEST_VALID) {
+                wspace->state.test.testResults.state1 = "PASSED";
+            } else {
+                wspace->state.test.testResults.state1 = "FAILED";
+            }
+
+            if ((wspace->state.test.th[0].state == TEST_VALID) &&
+                (wspace->state.test.th[1].state == TEST_VALID)) {
+                wspace->state.test.testResults.background = CLEAR_COLOR_RGB(16, 224, 16);
+                wspace->state.test.testResults.title      = "Porator PASSED";
+                wspace->state.test.testResults.button     = "TEST NEXT";
+                wspace->state.test.notification           = SuccessNotification;
+            } else {
+                if (wspace->state.test.count == 1) {
+                    wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 224, 16);
+                    wspace->state.test.testResults.title      = "Repeat Test";
+                    wspace->state.test.testResults.button     = "REPEAT";
+                    wspace->state.test.notification           = ConfusedNotification;
+                } else {
+                    wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 16, 16);
+                    wspace->state.test.testResults.title      = "Porator FAILED";
+                    wspace->state.test.testResults.button     = "TEST NEXT";
+                    wspace->state.test.notification           = FailNotification;
                 }
             }
             buzzerMelody(wspace->state.test.notification);
-            testToggleBackground(&wspace->state);
             screenTestResults(&wspace->state);
-            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(*wspace->state.test.notification),
-                TEST_RESULTS_NOTIFY_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
@@ -1152,12 +1111,22 @@ static esAction stateTestResults(void * space, const esEvent * event) {
             switch (touchEvent->tag) {
                 case 'B' : {
 
-                    return (ES_STATE_TRANSITION(stateTestResultsSaving));
+                    return (ES_STATE_TRANSITION(stateTestResultsSavingToMain));
                 }
                 case 'R' : {
-                    wspace->state.test.count++;
+                    if ((wspace->state.test.th[0].state == TEST_VALID) &&
+                        (wspace->state.test.th[1].state == TEST_VALID)) {
 
-                    return (ES_STATE_TRANSITION(stateTestFirstTh));
+                        return (ES_STATE_TRANSITION(stateTestResultsSaving));
+                    } else {
+                        if (wspace->state.test.count == 1) {
+
+                            return (ES_STATE_TRANSITION(stateTestFirstTh));
+                        } else {
+
+                            return (ES_STATE_TRANSITION(stateTestResultsSaving));
+                        }
+                    }
                 }
                 default: {
                     break;
@@ -1166,18 +1135,43 @@ static esAction stateTestResults(void * space, const esEvent * event) {
 
             return (ES_STATE_HANDLED());
         }
-        case TEST_RESULTS_NOTIFY_TIMEOUT_: {
-            testToggleBackground(&wspace->state);
-            screenTestResults(&wspace->state);
-            wspace->state.test.notification++;
+        default : {
 
-            if (*wspace->state.test.notification != 0) {
-                appTimerStart(&wspace->timeout, 
-                    ES_VTMR_TIME_TO_TICK_MS(*wspace->state.test.notification),
-                    TEST_RESULTS_NOTIFY_TIMEOUT_);
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateTestResultsSavingToMain(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            struct appDataLog entry;
+
+            if ((wspace->state.test.th[0].state == TEST_VALID) &&
+                (wspace->state.test.th[1].state == TEST_VALID)) {
+                entry.hasPassed = true;
+            } else {
+                entry.hasPassed = false;
             }
-            
+            entry.th[0].time        = wspace->state.test.th[0].time;
+            entry.th[0].rawMaxValue = wspace->state.test.th[0].rawMaxValue;
+            entry.th[1].time        = wspace->state.test.th[1].time;
+            entry.th[1].rawMaxValue = wspace->state.test.th[1].rawMaxValue;
+            entry.numOfTests        = wspace->state.test.count;
+            appTimeGet(&entry.timestamp);
+            appUserGetCurrent(&entry.user);
+            appDataLogSave(&entry);
+            appDataLogNumberOfEntries(&wspace->state.testReport.nEntries);
+            screenTestSaving(&wspace->state);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(200), WAKEUP_TIMEOUT_);
+
             return (ES_STATE_HANDLED());
+        }
+        case WAKEUP_TIMEOUT_: {
+
+            return (ES_STATE_TRANSITION(stateMain));
         }
         default : {
 
@@ -1193,7 +1187,12 @@ static esAction stateTestResultsSaving(void * space, const esEvent * event) {
         case ES_ENTRY: {
             struct appDataLog entry;
 
-            entry.hasPassed         = (evaluateTests(&wspace->state) == TEST_VALID) ? true : false;
+            if ((wspace->state.test.th[0].state == TEST_VALID) &&
+                (wspace->state.test.th[1].state == TEST_VALID)) {
+                entry.hasPassed = true;
+            } else {
+                entry.hasPassed = false;
+            }
             entry.th[0].time        = wspace->state.test.th[0].time;
             entry.th[0].rawMaxValue = wspace->state.test.th[0].rawMaxValue;
             entry.th[1].time        = wspace->state.test.th[1].time;
@@ -1204,13 +1203,14 @@ static esAction stateTestResultsSaving(void * space, const esEvent * event) {
             appDataLogSave(&entry);
             appDataLogNumberOfEntries(&wspace->state.testReport.nEntries);
             screenTestSaving(&wspace->state);
-            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(1000), WAKEUP_TIMEOUT_);
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(200), WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
         }
         case WAKEUP_TIMEOUT_: {
+            wspace->state.test.count = 0u;
 
-            return (ES_STATE_TRANSITION(stateMain));
+            return (ES_STATE_TRANSITION(stateTestFirstTh));
         }
         default : {
 
