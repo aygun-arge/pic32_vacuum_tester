@@ -14,6 +14,9 @@
 #include <stdint.h>
 
 /*===============================================================  MACRO's  ==*/
+
+#define GPIO_NUM_OF_PORTS                   3
+
 /*------------------------------------------------------  C++ extern begin  --*/
 #ifdef	__cplusplus
 extern "C" {
@@ -50,6 +53,21 @@ void initGpioDriver(
 void gpioChangeSetHandler(const struct gpio * gpio, uint32_t pin, void (* handler)(void));
 void gpioChangeEnableHandler(const struct gpio * gpio);
 void gpioChangeDisableHandler(const struct gpio * gpio);
+
+static inline void gpioSetAsInput(struct gpio * gpio, uint32_t pin)
+{
+    *gpio->tris |= ((uint32_t)0x1u << pin);
+}
+
+static inline void gpioSetAsOutput(struct gpio * gpio, uint32_t pin)
+{
+    *gpio->tris &= ~((uint32_t)0x1u << pin);
+}
+
+static inline uint32_t gpioRead(struct gpio * gpio)
+{
+    return (*gpio->port);
+}
 
 /*--------------------------------------------------------  C++ extern end  --*/
 #ifdef __cplusplus
