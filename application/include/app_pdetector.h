@@ -23,4 +23,6 @@ struct event_debounce
     enum pdetect_state  state;
 };
 
+void initPdetectorModule(void);
+
 #endif /* APP_PDETECTOR_H */

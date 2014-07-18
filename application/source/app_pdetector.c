@@ -22,11 +22,14 @@
 #include "driver/gpio.h"
 #include "vtimer/vtimer.h"
 #include "eds/epa.h"
+#include "events.h"
 
 #define CONFIG_PDETECTOR_PORT           &GpioA
 #define CONFIG_PDETECTOR_PIN            8
 #define CONFIG_TIMEOUT_MS               20
 #define CONFIG_CONSUMER                 Gui
+
+static const ES_MODULE_INFO_CREATE("pdetector", "Porator detector", "Nenad Radulovoc");
 
 static esVTimer timeout;
 
@@ -36,19 +39,19 @@ static void timeout_handler(void * arg)
     esError             error;
 
     (void)arg;
-    ES_ENSURE(error = esEventCreateI(sizeof(struct event_debounce), EVENT_PDETECT, &notify);
+    ES_ENSURE(error = esEventCreateI(sizeof(struct event_debounce), EVENT_PDETECT, &notify));
 
     if (!error) {
-        struct event_debounce * notify_;
+        struct event_debounce * notify_ = (struct event_debounce *)notify;
 
         if (gpioRead(CONFIG_PDETECTOR_PORT) & CONFIG_PDETECTOR_PIN) {
             notify_->state = PDETECT_PRESENT;
         } else {
             notify_->state = PDETECT_NOT_PRESENT;
         }
-        ES_ENSURE(esEpaSendEventI(Gui, notify_));
+        ES_ENSURE(esEpaSendEventI(Gui, notify));
 
-        gpioChangeDisableHandler
+        gpioChangeEnableHandler(CONFIG_PDETECTOR_PORT);
     }
 }
 
@@ -58,10 +61,10 @@ static void debounce_handler(void)
     esVTimerStartI(&timeout, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TIMEOUT_MS), timeout_handler, NULL);
 }
 
-void app_pdetector_init(void) 
+void initPdetectorModule(void)
 {
     esVTimerInit(&timeout);
-    gpioSetAsInput(CONFIG_PDETECTOR_PORT, CONFIG_PDETECTOR_PORT);
+    gpioSetAsInput(CONFIG_PDETECTOR_PORT, CONFIG_PDETECTOR_PIN);
     gpioChangeSetHandler(CONFIG_PDETECTOR_PORT, (0x1u << CONFIG_PDETECTOR_PIN), debounce_handler);
-    
 }
+

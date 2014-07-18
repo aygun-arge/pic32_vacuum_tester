@@ -22,6 +22,7 @@
 #include "app_gui.h"
 #include "app_usb.h"
 #include "app_psensor.h"
+#include "app_pdetector.h"
 #include "app_motor.h"
 #include "app_battery.h"
 #include "app_buzzer.h"
@@ -104,6 +105,7 @@ int main(void) {
     initMotorModule();
     initStorageModule(&StaticMem);
     initGpuModule();
+    initPdetectorModule();
 
     /*--  Setup NVM storage  -------------------------------------------------*/
     storageRegisterEntry(&DataLogStorage);

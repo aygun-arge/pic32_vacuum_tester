@@ -54,17 +54,17 @@ void gpioChangeSetHandler(const struct gpio * gpio, uint32_t pin, void (* handle
 void gpioChangeEnableHandler(const struct gpio * gpio);
 void gpioChangeDisableHandler(const struct gpio * gpio);
 
-static inline void gpioSetAsInput(struct gpio * gpio, uint32_t pin)
+static inline void gpioSetAsInput(const struct gpio * gpio, uint32_t pin)
 {
     *gpio->tris |= ((uint32_t)0x1u << pin);
 }
 
-static inline void gpioSetAsOutput(struct gpio * gpio, uint32_t pin)
+static inline void gpioSetAsOutput(const struct gpio * gpio, uint32_t pin)
 {
     *gpio->tris &= ~((uint32_t)0x1u << pin);
 }
 
-static inline uint32_t gpioRead(struct gpio * gpio)
+static inline uint32_t gpioRead(const struct gpio * gpio)
 {
     return (*gpio->port);
 }
