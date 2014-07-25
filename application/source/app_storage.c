@@ -30,6 +30,102 @@ struct __attribute__((packed)) storageSpace {
 
 static esMem *          Memory;
 
+static void queueInit(struct storageArrayQueue * queue, uint32_t size)
+{
+    queue->head = 0;
+    queue->tail = 0;
+    queue->size = size;
+    queue->free = size;
+}
+
+static uint32_t queuePut(struct storageArrayQueue * queue)
+{
+    uint32_t            index;
+
+    index = queue->head++;
+
+    if (queue->head == queue->size) {
+        queue->head = 0;
+    }
+    queue->free--;
+
+    return (index);
+}
+
+static uint32_t queueGet(struct storageArrayQueue * queue)
+{
+    uint32_t            index;
+
+    index = queue->tail++;
+
+    if (queue->tail == queue->size) {
+        queue->tail = 0;
+    }
+    queue->free++;
+
+    return (index);
+}
+
+static bool queueIsFull(const struct storageArrayQueue * queue)
+{
+    if (queue->free == 0) {
+        return (true);
+    } else {
+        return (false);
+    }
+}
+
+static bool queueIsEmpty(const struct storageArrayQueue * queue)
+{
+    if (queue->free == queue->size) {
+        return (true);
+    } else {
+        return (false);
+    }
+}
+
+static uint32_t queueHead(const struct storageArrayQueue * queue)
+{
+    return (queue->head);
+}
+
+static uint32_t queueTail(const struct storageArrayQueue * queue)
+{
+    return (queue->tail);
+}
+
+static uint32_t queueOccupied(const struct storageArrayQueue * queue)
+{
+    return (queue->size - queue->free);
+}
+
+static uint32_t queueTailOffset(const struct storageArrayQueue * queue, uint32_t offset)
+{
+    uint32_t            index;
+
+    index = offset + queue->tail;
+
+    if (index >= queue->size) {
+        index -= queue->size;
+    }
+
+    return (index);
+}
+
+static uint32_t indexToAddress(const struct storageArray * array, uint32_t index)
+{
+    uint32_t            sector;
+    uint32_t            offset;
+
+    sector  = index / array->blockDesc.entries;
+    sector *= array->blockDesc.size;
+    offset  = index % array->blockDesc.entries;
+    offset *= array->entryDesc.size;
+
+    return (array->phyDesc.base + sector + offset);
+}
+
+
 void initStorageModule(esMem * memory) {
     Memory = memory;
 }
@@ -174,6 +270,8 @@ esError storageGetSize(struct storageSpace * space, size_t * size) {
     return (ES_ERROR_NONE);
 }
 
+
+
 void storageRegisterArray(struct storageArray * array, size_t size) {
     uint32_t largeSector;
 
@@ -182,26 +280,107 @@ void storageRegisterArray(struct storageArray * array, size_t size) {
     while (flashGetSectorSize(largeSector) == 0x1000) {
         largeSector = flashGetNextSector(largeSector);
     }
-
-    array->phy.base     = largeSector;
-    array->phy.size     = size;
+    array->phyDesc.base      = largeSector;
+    array->phyDesc.nBlocks   = flashNSectors(array->phyDesc.base);
+    array->blockDesc.size    = flashGetSectorSize(array->phyDesc.base);
+    array->blockDesc.entries = array->blockDesc.size / size;
+    array->entryDesc.size    = size;
+    queueInit(&array->queue, array->blockDesc.entries);
+    array->entryNo           = 0;
 }
 
-uint32_t storageArrayNBlocks(const struct storageArray * array) {
-    return (flashNSectors(array->phy.base));
+uint32_t storageArrayMaxNBlocks(const struct storageArray * array)
+{
+    return (array->phyDesc.nBlocks);
 }
 
-uint32_t storageArrayNEntriesPerBlock(const struct storageArray * array) {
-    return (flashGetSectorSize(array->phy.base) / array->phy.size);
+uint32_t storageArrayMaxNEntriesPerBlock(const struct storageArray * array)
+{
+    return (array->blockDesc.entries);
 }
 
-uint32_t storageArrayNEntries(const struct storageArray * array) {
+uint32_t storageArrayMaxNEntries(const struct storageArray * array)
+{
 
-    return (storageArrayNBlocks(array) * storageArrayNEntriesPerBlock(array));
+    return (array->phyDesc.nBlocks * array->blockDesc.entries);
 }
 
-esError storageArrayRead(const struct storageArray * array, uint32_t block, uint32_t entryNo) {
+uint32_t storageArrayNEntries(const struct storageArray * array)
+{
+    return (array->entryNo);
+}
+
+esError storageArrayRead(const struct storageArray * array, uint32_t entryNo, void * buffer)
+{
+    esError                     error;
+    uint32_t                    index;
+    uint32_t                    address;
+
+    if (entryNo > queueOccupied(&array->queue)) {
+        return (ES_ERROR_ARG_OUT_OF_RANGE);
+    }
+    index   = queueTailOffset(&array->queue, entryNo);
+    address = indexToAddress(array, index);
+
+    error = flashRead(address, buffer, array->entryDesc.size);
+
+    return (error);
+}
+
+esError storageArrayEraseTail(struct storageArray * array)
+{
+    esError                     error;
+    uint32_t                    index;
+    uint32_t                    address;
     uint32_t                    sector;
+    uint32_t                    endAddress;
 
-    sector = array->phy.base;
+    index      = queueTail(&array->queue);
+    address    = indexToAddress(array, index);
+    sector     = flashGetSectorBase(address);
+    endAddress = flashGetNextSector(address);
+
+    do {
+        index   = queueGet(&array->queue);
+        address = indexToAddress(array, index);
+
+    } while ((address != endAddress) && !queueIsEmpty(&array->queue));
+    
+    error = flashEraseSector(sector);
+
+    return (error);
 }
+
+esError storageArrayWrite(struct storageArray * array, const void * buffer)
+{
+    esError                     error;
+    uint32_t                    index;
+    uint32_t                    headAddress;
+    uint32_t                    tailAddress;
+    
+    index       = queueHead(&array->queue);
+    headAddress = indexToAddress(array, index);
+    index       = queueTail(&array->queue);
+    tailAddress = indexToAddress(array, index);
+
+    if (flashGetSectorBase(headAddress) == flashGetSectorBase(tailAddress)) {
+        error = storageArrayEraseTail(array);
+
+        if (error) {
+            return (error);
+        }
+    } else if (headAddress == flashGetSectorBase(headAddress)) {
+        error = flashEraseSector(headAddress);
+
+        if (error) {
+            return (error);
+        }
+    }
+    error = flashWrite(headAddress, buffer, array->entryDesc.size);
+
+    if (error) {
+        return (error);
+    }
+    queuePut(&array->queue);
+}
+

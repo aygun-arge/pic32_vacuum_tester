@@ -29,11 +29,24 @@ struct storageEntry {
 
 struct storageArray {
     struct storageArrayPhy {
-        uint32_t            base;
-        uint32_t            size;
-        uint32_t            nSectors;
-        uint32_t            n;
-    }                   phy;
+        uint32_t                    base;
+        uint32_t                    nBlocks;
+    }                           phyDesc;
+    struct storageArrayBlock {
+        uint32_t                    entries;
+        size_t                      size;
+    }                           blockDesc;
+    struct storageArrayEntry {
+        size_t                      size;
+    }                           entryDesc;
+    struct storageArrayQueue {
+        uint32_t                    head;
+        uint32_t                    tail;
+        uint32_t                    free;
+        uint32_t                    size;
+    }                           queue;
+    uint32_t                    entryNo;
+    struct storageArray **      array;
 };
 
 void initStorageModule(esMem * memory);
