@@ -5,22 +5,15 @@
 #include "eds/event.h"
 
 #define CONFIG_DEBOUNCE_EVENT_BASE          1800
+#define CONFIG_CONSUMER                     Gui
+#define CONFIG_PDETECTOR_PORT               &GpioA
+#define CONFIG_PDETECTOR_PIN                9
 
-enum pdetect_state
-{
-    PDETECT_PRESENT,
-    PDETECT_NOT_PRESENT
-};
 
 enum event_debounce_id
 {
-    EVENT_PDETECT
-};
-
-struct event_debounce
-{
-    esEvent             super;
-    enum pdetect_state  state;
+    EVT_PDETECT_PRESS = CONFIG_DEBOUNCE_EVENT_BASE,
+    EVT_PDETECT_RELEASE
 };
 
 void initPdetectorModule(void);

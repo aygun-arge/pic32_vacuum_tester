@@ -2,13 +2,15 @@
 #include "base/debug.h"
 #include <string.h>
 
+static char function[100];
+static char expression[100];
+static char message[100];
+static char file[100];
+
 void userAssert(
     const struct esDebugReport * dbgReport) {
 
-    static char function[100];
-    static char expression[100];
-    static char message[100];
-    static char file[100];
+
 
     strcpy(function,   dbgReport->fnName);
     strcpy(expression, dbgReport->expr);

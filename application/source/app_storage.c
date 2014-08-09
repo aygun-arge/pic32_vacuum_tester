@@ -1,4 +1,8 @@
 
+/*
+ * Autor: Nenad Radulovic, nazalost upetljano, upetljano, upetljano...
+ */
+
 #include <string.h>
 
 #include "app_storage.h"
@@ -382,5 +386,7 @@ esError storageArrayWrite(struct storageArray * array, const void * buffer)
         return (error);
     }
     queuePut(&array->queue);
+
+    return (ES_ERROR_NONE);
 }
 

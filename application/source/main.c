@@ -54,6 +54,8 @@ static const ES_MODULE_INFO_CREATE("main", "main loop", "Nenad Radulovic");
 
 static uint8_t          StaticMemBuff[CONFIG_EDS_STATIC_SIZE];
 
+
+
 /*======================================================  GLOBAL VARIABLES  ==*/
 
 esMem                   StaticMem      = ES_MEM_INITIALIZER();
@@ -111,6 +113,7 @@ int main(void) {
     storageRegisterEntry(&DataLogStorage);
     storageRegisterEntry(&TouchStorage);
     storageRegisterEntry(&ConfigStorage);
+    storageRegisterEntry(&ArrayDescStorage);
 
     /*--  Boot the rest of modules  ------------------------------------------*/
     initAppDataLog();

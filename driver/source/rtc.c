@@ -5,6 +5,7 @@
 #include "base/debug.h"
 #include "arch/intr.h"
 #include "driver/gpio.h"
+#include "plat/critical.h"
 #include <string.h>
 #include <xc.h>
 
@@ -81,9 +82,6 @@
 #define RTC_READ_CMD                    (RTC_SLAVE_ADDRESS |  0x1u)
 #define RTC_WRITE_CMD                   (RTC_SLAVE_ADDRESS & ~0x1u)
 
-#define ENABLE_RTC_ISR()                                                        \
-    do {                                                                        \
-        if ()
 
 struct rtcTimeRegisters {
     uint8_t             seconds;
@@ -100,6 +98,8 @@ static const ES_MODULE_INFO_CREATE("RTC", "Real Time Clock", "Nenad Radulovic");
 static struct i2cHandle RtcI2c;
 
 static struct rtcTime   CurrentTime;
+
+static struct change_slot * g_change_handle;
 
 static esError rtcReadArray(uint8_t address, uint8_t * data, size_t size) {
     ES_REQUIRE(ES_API_RANGE, size < 8);
@@ -320,7 +320,9 @@ void initRtcDriver(void) {
         goto FAILURE;
     }
     *(CONFIG_RTC_INT_PORT)->tris   |= (0x1u << CONFIG_RTC_INT_PIN);
-    gpioChangeSetHandler(CONFIG_RTC_INT_PORT, CONFIG_RTC_INT_PIN, rtcTick);
+    g_change_handle = gpio_request_slot(CONFIG_RTC_INT_PORT, CONFIG_RTC_INT_PIN,
+        rtcTick);
+    gpio_change_enable(g_change_handle);
 
     return;
 FAILURE:
@@ -338,22 +340,25 @@ bool isRtcActive(void) {
 
 esError rtcSetTime(const struct rtcTime * time) {
     esError             error;
+    esIntrCtx                   intr_ctx;
 
-    gpioChangeDisableHandler(CONFIG_RTC_INT_PORT);
+    ES_CRITICAL_LOCK_ENTER(&intr_ctx);
     error = rtcPutTime(time);
 
     if (error == ES_ERROR_NONE) {
         memcpy(&CurrentTime, time, sizeof(CurrentTime));
     }
-    gpioChangeEnableHandler(CONFIG_RTC_INT_PORT);
+    ES_CRITICAL_LOCK_EXIT(intr_ctx);
 
     return (error);
 }
 
 esError rtcGetTime(struct rtcTime * time) {
-    gpioChangeDisableHandler(CONFIG_RTC_INT_PORT);
+    esIntrCtx                   intr_ctx;
+
+    ES_CRITICAL_LOCK_ENTER(&intr_ctx);
     memcpy(time, &CurrentTime, sizeof(*time));
-    gpioChangeEnableHandler(CONFIG_RTC_INT_PORT);
+    ES_CRITICAL_LOCK_EXIT(intr_ctx);
 
     return (ES_ERROR_NONE);
 }

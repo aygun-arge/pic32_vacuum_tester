@@ -68,6 +68,15 @@ esError storageGetEmpty(
     struct storageSpace * space,
     size_t *            empty);
 
+void storageRegisterArray(struct storageArray * array, size_t size);
+uint32_t storageArrayMaxNBlocks(const struct storageArray * array);
+uint32_t storageArrayMaxNEntriesPerBlock(const struct storageArray * array);
+uint32_t storageArrayMaxNEntries(const struct storageArray * array);
+uint32_t storageArrayNEntries(const struct storageArray * array);
+esError storageArrayRead(const struct storageArray * array, uint32_t entryNo, void * buffer);
+esError storageArrayEraseTail(struct storageArray * array);
+esError storageArrayWrite(struct storageArray * array, const void * buffer);
+
 #ifdef	__cplusplus
 }
 #endif

@@ -9,8 +9,10 @@
 /*=========================================================  INCLUDE FILES  ==*/
 
 #include "arch/intr.h"
+#include "plat/critical.h"
 #include <xc.h>
 #include <sys/attribs.h>
+#include <stdbool.h>
 
 #include "driver/gpio.h"
 
@@ -31,10 +33,19 @@
 #define CHANGE_SUBPRIO_GPIOC            (0x3u << 16)
 
 /*======================================================  LOCAL DATA TYPES  ==*/
+
+struct change_slot
+{
+    void                     (* handler)(void);
+    uint32_t                    bitwise_pin;
+    uint32_t                    port_no;
+    bool                        is_enabled;
+};
+
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
 /*=======================================================  LOCAL VARIABLES  ==*/
 
-static void (* Handler[3])(void);
+static struct change_slot g_change_slot[CONFIG_MAX_CHANGE_HANDLERS];
 
 /*======================================================  GLOBAL VARIABLES  ==*/
 
@@ -96,6 +107,59 @@ static void initPort(const struct gpio * gpio) {
     *(gpio->ansel)    = 0u;
 }
 
+static const struct gpio * port_no_to_gpio(uint32_t num)
+{
+#if (((__PIC32_FEATURE_SET__ >= 100) && (__PIC32_FEATURE_SET__ <= 299)))
+    static const struct gpio * num_to_gpio [] =
+    {
+        &GpioA,
+        &GpioB,
+        &GpioC
+    };
+    
+    return (num_to_gpio[num]);
+#endif
+}
+
+static uint32_t gpio_to_port_no(const struct gpio * gpio)
+{
+    uint32_t                    port_no;
+
+    for (port_no = 0u; port_no < GPIO_NUM_OF_PORTS; port_no++) {
+        if (gpio == port_no_to_gpio(port_no)) {
+            return (port_no);
+        }
+    }
+    return (-1);
+}
+
+static bool is_this_port_empty(uint32_t port_no)
+{
+    const struct gpio *         gpio = port_no_to_gpio(port_no);
+
+    if (*(gpio->change) == 0u) {
+        return (true);
+    } else {
+        return (false);
+    }
+}
+
+static void find_and_exec(uint32_t port_no)
+{
+    uint32_t                    count;
+    struct change_slot *        slot;
+
+    for (count = 0u; count < CONFIG_MAX_CHANGE_HANDLERS; count++) {
+        slot = &g_change_slot[count];
+
+        if (slot->handler) {
+            if (slot->is_enabled && (slot->port_no == port_no)) {
+                slot->handler();
+            }
+        }
+    }
+}
+
 /*===================================  GLOBAL PRIVATE FUNCTION DEFINITIONS  ==*/
 /*====================================  GLOBAL PUBLIC FUNCTION DEFINITIONS  ==*/
 
@@ -111,56 +175,110 @@ void initGpioDriver(
 #endif
 }
 
-void gpioChangeSetHandler(const struct gpio * gpio, uint32_t pin, void (* handler)(void)) {
-    *(gpio->change) |= (0x1u << pin);
+struct change_slot * gpio_request_slot(const struct gpio * gpio, uint32_t pin, void (* handler)(void))
+{
+    struct change_slot *        slot;
+    uint32_t                    count;
+    esIntrCtx                   intr_ctx;
 
-    if (gpio == &GpioA) {
-        Handler[0]    = handler;
-        CNCONA       |= CNCON_ON;
-        IEC1CLR       = CHANGE_INT_GPIOA;
-        IFS1CLR       = CHANGE_INT_GPIOA;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOA;
-    } else if (gpio == &GpioB) {
-        Handler[1]    = handler;
-        CNCONB       |= CNCON_ON;
-        IEC1CLR       = CHANGE_INT_GPIOB;
-        IFS1CLR       = CHANGE_INT_GPIOB;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOB;
-    } else if (gpio == &GpioC) {
-        Handler[2]    = handler;
-        CNCONC       |= CNCON_ON;
-        IEC1CLR       = CHANGE_INT_GPIOC;
-        IFS1CLR       = CHANGE_INT_GPIOC;
-        IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
-        IPC8bits.CNIS = 0;
-        IEC1SET       = CHANGE_INT_GPIOC;
+    ES_CRITICAL_LOCK_ENTER(&intr_ctx);
+    for (slot = NULL, count = 0; count < CONFIG_MAX_CHANGE_HANDLERS; count++) {
+        if (g_change_slot[count].handler == NULL) {
+            slot = &g_change_slot[count];
+            slot->handler     = handler;
+            slot->bitwise_pin = (0x1u << pin);
+            slot->port_no     = gpio_to_port_no(gpio);
+            slot->is_enabled  = false;
+
+            break;
+        }
     }
+    ES_CRITICAL_LOCK_EXIT(intr_ctx);
+
+    return (slot);
 }
 
-void gpioChangeEnableHandler(const struct gpio * gpio) {
+void gpio_release_slot(struct change_slot * slot)
+{
 
-    if (gpio == &GpioA) {
-        IEC1SET = CHANGE_INT_GPIOA;
-    } else if (gpio == &GpioB) {
-        IEC1SET = CHANGE_INT_GPIOB;
-    } else if (gpio == &GpioC) {
-        IEC1SET = CHANGE_INT_GPIOC;
-    }
 }
 
-void gpioChangeDisableHandler(const struct gpio * gpio) {
+void gpio_change_enable(struct change_slot * slot)
+{
+    esIntrCtx                   intr_ctx;
 
-    if (gpio == &GpioA) {
-        IEC1CLR = CHANGE_INT_GPIOA;
-    } else if (gpio == &GpioB) {
-        IEC1CLR = CHANGE_INT_GPIOB;
-    } else if (gpio == &GpioC) {
-        IEC1CLR = CHANGE_INT_GPIOC;
+    slot->is_enabled = true;
+    ES_CRITICAL_LOCK_ENTER(&intr_ctx);
+
+    if (is_this_port_empty(slot->port_no)) {
+        switch (slot->port_no) {
+            case 0 : {
+                IEC1CLR       = CHANGE_INT_GPIOA;
+                CNCONASET     = CNCON_ON;
+                IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+                IPC8bits.CNIS = 0;
+                IEC1SET       = CHANGE_INT_GPIOA;
+
+                break;
+            }
+            case 1 : {
+                IEC1CLR       = CHANGE_INT_GPIOB;
+                CNCONBSET     = CNCON_ON;
+                IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+                IPC8bits.CNIS = 0;
+                IEC1SET       = CHANGE_INT_GPIOB;
+
+                break;
+            }
+            case 2 : {
+                IEC1CLR       = CHANGE_INT_GPIOC;
+                CNCONCSET     = CNCON_ON;
+                IPC8bits.CNIP = CONFIG_INTR_MAX_ISR_PRIO;
+                IPC8bits.CNIS = 0;
+                IEC1SET       = CHANGE_INT_GPIOC;
+
+                break;
+            }
+            default : {
+                /* Nothing */
+            }
+        }
     }
+    *(port_no_to_gpio(slot->port_no)->change) |= slot->bitwise_pin;
+    ES_CRITICAL_LOCK_EXIT(intr_ctx);
+}
+
+void gpio_change_disable(struct change_slot * slot)
+{
+    esIntrCtx                   intr_ctx;
+
+    slot->is_enabled = false;
+    ES_CRITICAL_LOCK_ENTER(&intr_ctx);
+    *(port_no_to_gpio(slot->port_no)->change) &= ~slot->bitwise_pin;
+
+    if (is_this_port_empty(slot->port_no)) {
+        switch (slot->port_no) {
+            case 0 : {
+                IEC1CLR = CHANGE_INT_GPIOA;
+
+                break;
+            }
+            case 1 : {
+                IEC1CLR = CHANGE_INT_GPIOB;
+
+                break;
+            }
+            case 2 : {
+                IEC1CLR = CHANGE_INT_GPIOC;
+
+                break;
+            }
+            default : {
+                /* Nothing */
+            }
+        }
+    }
+    ES_CRITICAL_LOCK_EXIT(intr_ctx);
 }
 
 void __ISR(_CHANGE_NOTICE_VECTOR) changeNotice(void) {
@@ -171,28 +289,19 @@ void __ISR(_CHANGE_NOTICE_VECTOR) changeNotice(void) {
     port = *GpioA.port;
 
     if (intFlag & CHANGE_INT_GPIOA) {
-
-        if (Handler[0] != NULL) {
-            Handler[0]();
-        }
+        find_and_exec(0);
         IFS1CLR = CHANGE_INT_GPIOA;
     }
     port = *GpioB.port;
 
     if (intFlag & CHANGE_INT_GPIOB) {
-
-        if (Handler[1] != NULL) {
-            Handler[1]();
-        }
+        find_and_exec(1);
         IFS1CLR = CHANGE_INT_GPIOB;
     }
     port = *GpioC.port;
 
     if (intFlag & CHANGE_INT_GPIOC) {
-
-        if (Handler[2] != NULL) {
-            Handler[2]();
-        }
+        find_and_exec(2);
         IFS1CLR = CHANGE_INT_GPIOC;
     }
 }

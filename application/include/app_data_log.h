@@ -22,7 +22,10 @@
 extern "C" {
 #endif
 
+#define CONFIG_USE_DIRECT_ENTRY         0
+
 extern const struct storageEntry DataLogStorage;
+extern const struct storageEntry ArrayDescStorage;
 
 struct appDataLog {
     struct appTime      timestamp;

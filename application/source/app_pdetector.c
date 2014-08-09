@@ -24,13 +24,12 @@
 #include "eds/epa.h"
 #include "events.h"
 
-#define CONFIG_PDETECTOR_PORT           &GpioA
-#define CONFIG_PDETECTOR_PIN            8
 #define CONFIG_TIMEOUT_MS               20
-#define CONFIG_CONSUMER                 Gui
+
 
 static const ES_MODULE_INFO_CREATE("pdetector", "Porator detector", "Nenad Radulovoc");
 
+static struct change_slot * g_change_handle;
 static esVTimer timeout;
 
 static void timeout_handler(void * arg)
@@ -39,25 +38,22 @@ static void timeout_handler(void * arg)
     esError             error;
 
     (void)arg;
-    ES_ENSURE(error = esEventCreateI(sizeof(struct event_debounce), EVENT_PDETECT, &notify));
+
+    if (gpioRead(CONFIG_PDETECTOR_PORT) & (0x1u << CONFIG_PDETECTOR_PIN)) {
+        ES_ENSURE(error = esEventCreateI(sizeof(esEvent), EVT_PDETECT_RELEASE, &notify));
+    } else {
+        ES_ENSURE(error = esEventCreateI(sizeof(esEvent), EVT_PDETECT_PRESS, &notify));
+    }
 
     if (!error) {
-        struct event_debounce * notify_ = (struct event_debounce *)notify;
-
-        if (gpioRead(CONFIG_PDETECTOR_PORT) & CONFIG_PDETECTOR_PIN) {
-            notify_->state = PDETECT_PRESENT;
-        } else {
-            notify_->state = PDETECT_NOT_PRESENT;
-        }
-        ES_ENSURE(esEpaSendEventI(Gui, notify));
-
-        gpioChangeEnableHandler(CONFIG_PDETECTOR_PORT);
+        ES_ENSURE(esEpaSendEventI(CONFIG_CONSUMER, notify));
     }
+    gpio_change_enable(g_change_handle);
 }
 
 static void debounce_handler(void)
 {
-    gpioChangeDisableHandler(CONFIG_PDETECTOR_PORT);
+    gpio_change_disable(g_change_handle);
     esVTimerStartI(&timeout, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TIMEOUT_MS), timeout_handler, NULL);
 }
 
@@ -65,6 +61,8 @@ void initPdetectorModule(void)
 {
     esVTimerInit(&timeout);
     gpioSetAsInput(CONFIG_PDETECTOR_PORT, CONFIG_PDETECTOR_PIN);
-    gpioChangeSetHandler(CONFIG_PDETECTOR_PORT, (0x1u << CONFIG_PDETECTOR_PIN), debounce_handler);
+    g_change_handle = gpio_request_slot(CONFIG_PDETECTOR_PORT,
+        CONFIG_PDETECTOR_PIN, debounce_handler);
+    gpio_change_enable(g_change_handle);
 }
 

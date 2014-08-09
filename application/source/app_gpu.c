@@ -21,6 +21,8 @@
 
 #define GPU_ID                          0x7cu
 
+static struct change_slot * g_change_handle;
+
 static void (* ClientHandler)(void);
 
 Ft_Gpu_Hal_Context_t Gpu;
@@ -177,14 +179,16 @@ void gpuGetTouchCalibration(struct gpuTouchData * touchData) {
 
 void gpuTouchEnable(void (* handler)(void)) {
     ClientHandler = handler;
-    gpioChangeSetHandler(FT800_INT_PORT, FT800_INT_PIN, gpuInterruptHandler);
+    g_change_handle = gpio_request_slot(FT800_INT_PORT, FT800_INT_PIN,
+        gpuInterruptHandler);
+    gpio_change_enable(g_change_handle);
     Ft_Gpu_Hal_Rd32(&Gpu, REG_INT_FLAGS);
     Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_MASK, INT_TAG);
     Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_EN, 0x1);
 }
 
 void gpuTouchDisable(void) {
-    gpioChangeDisableHandler(FT800_INT_PORT);
+    gpio_change_disable(g_change_handle);
     Ft_Gpu_Hal_Rd32(&Gpu, REG_INT_FLAGS);
     Ft_Gpu_Hal_Wr32(&Gpu, REG_INT_MASK, 0);
 }

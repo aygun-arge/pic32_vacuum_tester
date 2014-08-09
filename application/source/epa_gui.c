@@ -25,6 +25,7 @@
 #include "app_storage.h"
 #include "app_user.h"
 #include "app_data_log.h"
+#include "app_pdetector.h"
 
 /*=========================================================  LOCAL MACRO's  ==*/
 
@@ -34,7 +35,7 @@
 #define CONFIG_TEST_OVERVIEW_MS         5000
 #define CONFIG_TEST_REFRESH_MS          10
 #define CONFIG_TOUCH_REFRESH_MS         20
-#define CONFIG_MAIN_REFRESH_MS          100
+#define CONFIG_MAIN_REFRESH_MS          1000
 
 #define DEF_VACUUM_UNIT                 "\"Hg"
 
@@ -877,7 +878,9 @@ static esAction stateMain(void * space, const esEvent * event) {
                 }
             }
         }
-        case MAIN_REFRESH_: {
+        case EVT_PDETECT_PRESS  :
+        case EVT_PDETECT_RELEASE: 
+        case MAIN_REFRESH_      : {
             struct appTime time;
 
             appTimeGet(&time);
