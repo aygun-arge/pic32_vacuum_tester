@@ -40,9 +40,9 @@ static void timeout_handler(void * arg)
     (void)arg;
 
     if (gpioRead(CONFIG_PDETECTOR_PORT) & (0x1u << CONFIG_PDETECTOR_PIN)) {
-        ES_ENSURE(error = esEventCreateI(sizeof(esEvent), EVT_PDETECT_RELEASE, &notify));
-    } else {
         ES_ENSURE(error = esEventCreateI(sizeof(esEvent), EVT_PDETECT_PRESS, &notify));
+    } else {
+        ES_ENSURE(error = esEventCreateI(sizeof(esEvent), EVT_PDETECT_RELEASE, &notify));
     }
 
     if (!error) {
