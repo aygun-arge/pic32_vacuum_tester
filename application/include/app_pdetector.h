@@ -6,8 +6,7 @@
 
 #define CONFIG_DEBOUNCE_EVENT_BASE          1800
 #define CONFIG_CONSUMER                     Gui
-#define CONFIG_PDETECTOR_PORT               &GpioA
-#define CONFIG_PDETECTOR_PIN                9
+
 
 
 enum event_debounce_id

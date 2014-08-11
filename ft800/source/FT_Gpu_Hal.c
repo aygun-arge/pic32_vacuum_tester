@@ -63,8 +63,9 @@ ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
 	printf("\nhandle=0x%x status=0x%x\n",host->hal_handle,status);	
 #endif
 #ifdef PIC32_PLATFORM
+
     struct spiConfig spiConfig = {
-        &GlobalSpi2,
+        CONFIG_FT800_SPI,
         SPI_MASTER_MODE | SPI_MASTER_SS_ACTIVE_LOW |
         SPI_SLAVE_MODE  |
         SPI_CLOCK_POLARITY_IDLE_LOW | SPI_CLOCK_PHASE_FIRST_EDGE |
@@ -72,10 +73,10 @@ ft_bool_t    Ft_Gpu_Hal_Open(Ft_Gpu_Hal_Context_t *host)
         10000000ul,
         2,
         {
-            SPI2_SDI_RPB2,
-            SPI2_SDO_RPB5,
-            0,                                                                  /* Using hardware dedicated pin                             */
-            SPI2_SS_RPC2_GPIO                                                   /* Using software SS pin                                    */
+            CONFIG_FT800_SPI_SDI,
+            CONFIG_FT800_SPI_SDO,
+            CONFIG_FT800_SPI_CS,                                                /* Using hardware dedicated pin                             */
+            CONFIG_FT800_SPI_SS                                                 /* Using software SS pin                                    */
         }
     };
     spiOpen((struct spiHandle *)host->hal_handle, &spiConfig);

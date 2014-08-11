@@ -3,9 +3,8 @@
 
 #include "app_buzzer.h"
 #include "driver/gpio.h"
+#include "config/pinout_config.h"
 
-#define CONFIG_BUZZER_GPIO_PORT         &GpioB
-#define CONFIG_BUZZER_GPIO_PIN          1
 
 static esVTimer BuzzerTimeout;
 

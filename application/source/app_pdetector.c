@@ -23,6 +23,7 @@
 #include "vtimer/vtimer.h"
 #include "eds/epa.h"
 #include "events.h"
+#include "config/pinout_config.h"
 
 #define CONFIG_TIMEOUT_MS               20
 
@@ -61,6 +62,7 @@ void initPdetectorModule(void)
 {
     esVTimerInit(&timeout);
     gpioSetAsInput(CONFIG_PDETECTOR_PORT, CONFIG_PDETECTOR_PIN);
+    gpioSetPullDown(CONFIG_PDETECTOR_PORT, CONFIG_PDETECTOR_PIN);
     g_change_handle = gpio_request_slot(CONFIG_PDETECTOR_PORT,
         CONFIG_PDETECTOR_PIN, debounce_handler);
     gpio_change_enable(g_change_handle);

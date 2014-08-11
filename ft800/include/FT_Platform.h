@@ -40,10 +40,11 @@
 #include <string.h>
 #include "driver/spi.h"
 #include "TimeDelay.h"
-#define FT800_INT_PORT                  &GpioB
-#define FT800_INT_PIN                   7
-#define FT800_PD_N_PORT                 &GpioB
-#define FT800_PD_N_PIN                  3
+#include "config/pinout_config.h"
+#define FT800_INT_PORT                  CONFIG_FT800_INT_PORT
+#define FT800_INT_PIN                   CONFIG_FT800_INT_PIN
+#define FT800_PD_N_PORT                 CONFIG_FT800_PD_N_PORT
+#define FT800_PD_N_PIN                  CONFIG_FT800_PD_N_PIN
 #endif
 
 #include "FT_DataTypes.h"

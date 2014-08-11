@@ -344,11 +344,10 @@ esError storageArrayEraseTail(struct storageArray * array)
     sector     = flashGetSectorBase(address);
     endAddress = flashGetNextSector(address);
 
-    do {
+    while ((address != endAddress) && !queueIsEmpty(&array->queue)) {
         index   = queueGet(&array->queue);
         address = indexToAddress(array, index);
-
-    } while ((address != endAddress) && !queueIsEmpty(&array->queue));
+    }
     
     error = flashEraseSector(sector);
 

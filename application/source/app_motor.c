@@ -7,16 +7,8 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 #include "app_timer.h"
+#include "config/pinout_config.h"
 
-#define CONFIG_MSENSOR_GPIO_PORT        &GpioC
-#define CONFIG_MSENSOR_GPIO_PIN         0
-#define CONFIG_MSENSOR_AD_CHANNEL       6
-
-#define CONFIG_MDRIVE_GPIO_PORT         &GpioA
-#define CONFIG_MDRIVE_GPIO_PIN          4
-
-#define CONFIG_MDRIVE_POWER_PORT        &GpioA
-#define CONFIG_MDRIVE_POWER_PIN         10
 
 static bool isTimerElapsed;
 
