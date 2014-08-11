@@ -9,6 +9,7 @@
 #define CONFIG_DEF_TH0_RAW_VACUUM       70
 #define CONFIG_DEF_TH1_TIMEOUT          1000
 #define CONFIG_DEF_TH1_RAW_VACUUM       84
+#define CONFIG_DEF_RETRY_COUNT          2
 #define CONFIG_DEF_PASSWORD             "1248"
 
 struct config {
@@ -169,6 +170,11 @@ uint32_t configGetTh1RawVacuum(void) {
 uint32_t configGetTh1DefaultRawVacuum(void) {
 
     return (CONFIG_DEF_TH1_RAW_VACUUM);
+}
+
+uint32_t configGetRetryCount(void)
+{
+    return (CONFIG_DEF_RETRY_COUNT);
 }
 
 bool configIsPasswordCharValid(char character, uint8_t position) {

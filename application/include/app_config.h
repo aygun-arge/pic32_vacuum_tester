@@ -37,6 +37,7 @@ uint32_t configGetTh0DefaultTimeout(void);
 uint32_t configGetTh0DefaultRawVacuum(void);
 uint32_t configGetTh1DefaultTimeout(void);
 uint32_t configGetTh1DefaultRawVacuum(void);
+uint32_t configGetRetryCount(void);
 bool configIsPasswordCharValid(char character, uint8_t position);
 uint32_t configPasswordLength(void);
 
