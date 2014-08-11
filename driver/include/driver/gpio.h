@@ -62,6 +62,11 @@ static inline void gpioSetAsInput(const struct gpio * gpio, uint32_t pin)
     *gpio->tris |= ((uint32_t)0x1u << pin);
 }
 
+static inline void gpioSetPullDown(const struct gpio * gpio, uint32_t pin)
+{
+    *gpio->pulldown |= ((uint32_t)0x1u << pin);
+}
+
 static inline void gpioSetAsOutput(const struct gpio * gpio, uint32_t pin)
 {
     *gpio->tris &= ~((uint32_t)0x1u << pin);
