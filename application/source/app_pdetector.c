@@ -25,7 +25,7 @@
 #include "events.h"
 #include "config/pinout_config.h"
 
-#define CONFIG_TIMEOUT_MS               20
+#define CONFIG_TIMEOUT_MS               50
 
 
 static const ES_MODULE_INFO_CREATE("pdetector", "Porator detector", "Nenad Radulovoc");
