@@ -6,11 +6,8 @@
 #include "base/bitop.h"
 #include "base/error.h"
 
-#define CONFIG_S25_SPI_MODULE           &SpiSoft
-#define CONFIG_S25FL_SDI                SPIS_SDI_C4
-#define CONFIG_S25FL_SDO                SPIS_SDO_C3
-#define CONFIG_S25FL_SCK                SPIS_SCK_C6
-#define CONFIG_S25FL_SS                 SPIS_SS_C5
+#include "config/pinout_config.h"
+
 
 #define CFI_MANUFACTURER_Pos            0x00u
 #define CFI_DEVICE_ID_MSB_Pos           0x01u
@@ -152,6 +149,7 @@ static void readPhy(struct flashPhy * phy) {
     phy->nEraseBlockRegions =  cfi[CFI_NUM_OF_ERASE_BLOCKS_Pos];
     phy->ebr[0].nSectors    = (cfi[CFI_EBR1_NUM_OF_SECTORS_MSB_Pos] << 8) |
                                cfi[CFI_EBR1_NUM_OF_SECTORS_LSB_Pos];
+    phy->ebr[0].nSectors++;
     phy->ebr[0].sectorSize  = (cfi[CFI_EBR1_SECTOR_SIZE_MSB_Pos] << 8) |
                                cfi[CFI_EBR1_SECTOR_SIZE_LSB_Pos];
     phy->ebr[0].sectorSize *= 256u;
@@ -159,6 +157,7 @@ static void readPhy(struct flashPhy * phy) {
     if (phy->nEraseBlockRegions == 2) {
         phy->ebr[1].nSectors    = (cfi[CFI_EBR2_NUM_OF_SECTORS_MSB_Pos] << 8) |
                                    cfi[CFI_EBR2_NUM_OF_SECTORS_LSB_Pos];
+        phy->ebr[1].nSectors++;
         phy->ebr[1].sectorSize  = (cfi[CFI_EBR2_SECTOR_SIZE_MSB_Pos] << 8) |
                                    cfi[CFI_EBR2_SECTOR_SIZE_LSB_Pos];
         phy->ebr[1].sectorSize *= 256u;
