@@ -67,6 +67,9 @@
 #define POS_TITLE_V                     30
 #define POS_TITLE_H                     (DISP_WIDTH / 2)
 
+#define B_IS_ACTIVE                     true
+#define B_IS_INACTIVE                   false
+
 #define SCREEN_TEST_EN_FIRST_INFO       (0x1u << 0)
 #define SCREEN_TEST_EN_SECOND_INFO      (0x1u << 1)
 #define SCREEN_TEST_EN_FIRST_PROGRESS   (0x1u << 2)
@@ -102,6 +105,7 @@
     entry(stateTestFirstTh,         stateTestInProgress)                        \
     entry(stateTestSecondTh,        stateTestInProgress)                        \
     entry(stateTestResultStatic,    stateTest)                                  \
+    entry(stateTestResultReleased,  stateTest)                                  \
     entry(stateTestResultReady,     stateTest)                                  \
     entry(stateSettings,            TOP)                                        \
     entry(stateSettingsAbout,       TOP)                                        \
@@ -180,6 +184,8 @@ struct wspace {
             struct testResults {
                 const char *        title;
                 const char *        button;
+                bool                is_rbutton_active;
+                bool                is_bbutton_active;
                 uint32_t            rawMax0Value;
                 const char *        state0;
                 uint32_t            rawMax1Value;
@@ -238,6 +244,7 @@ static esAction stateTestInProgress     (void *, const esEvent *);
 static esAction stateTestFirstTh        (void *, const esEvent *);
 static esAction stateTestSecondTh       (void *, const esEvent *);
 static esAction stateTestResultStatic   (void *, const esEvent *);
+static esAction stateTestResultReleased (void *, const esEvent *);
 static esAction stateTestResultReady    (void *, const esEvent *);
 static esAction stateSettings           (void *, const esEvent *);
 static esAction stateSettingsAbout      (void *, const esEvent *);
@@ -297,10 +304,16 @@ static void constructTitle(const char * title) {
     Ft_Gpu_CoCmd_Text(&Gpu, POS_TITLE_H,  POS_TITLE_V, DEF_B1_FONT_SIZE, OPT_CENTER, title);
 }
 
-static void constructButtonBack(enum buttonBackPos position) {
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(8, 120, 40));
+static void constructButtonBack(enum buttonBackPos position, bool active) {
+
+    if (active) {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('B'));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(8, 120, 40));
+    } else {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
+    }
 
     switch (position) {
         case DOWN_LEFT: {
@@ -423,10 +436,18 @@ static void screenTestResults(const union state * state) {
     Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_18,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTERY,
         state->test.testResults.rawMax1Value);
     Ft_Gpu_CoCmd_Text(&Gpu,  POS_COLUMN_26,  POS_ROW_1_5, DEF_N1_FONT_SIZE, OPT_CENTER, state->test.testResults.state1);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 140, 130, 80, DEF_N1_FONT_SIZE, 0, state->test.testResults.button);
-    constructButtonBack(DOWN_LEFT);
+
+    if (state->test.testResults.is_rbutton_active) {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
+        Ft_Gpu_CoCmd_Button(&Gpu, 170, 140, 130, 80, DEF_N1_FONT_SIZE, 0, state->test.testResults.button);
+    } else {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
+        Ft_Gpu_CoCmd_Button(&Gpu, 170, 140, 130, 80, DEF_N1_FONT_SIZE, 0, state->test.testResults.button);
+    }
+
+    constructButtonBack(DOWN_LEFT, state->test.testResults.is_bbutton_active);
     gpuEnd();
 }
 
@@ -446,7 +467,7 @@ static void screenExportInsert(void) {
     constructTitle("Export");
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, DEF_N1_FONT_SIZE, OPT_CENTER,
         "Please insert USB flash drive");
-    constructButtonBack(DOWN_MIDDLE);
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -479,7 +500,7 @@ static void screenExportChoose(const union state * state) {
     Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
     Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    constructButtonBack(DOWN_LEFT);
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Export");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
@@ -545,7 +566,7 @@ static void screenSettings(void) {
 #endif
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('U'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "Administration");
-    constructButtonBack(DOWN_MIDDLE);
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -564,7 +585,7 @@ static void screenSettingsAdmin(void) {
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 120, 130, 40, DEF_N1_FONT_SIZE, 0, "Parameters");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Clock");
-    constructButtonBack(DOWN_LEFT);
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -575,7 +596,7 @@ static void screenSettingsAuth(void) {
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
     Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
-    constructButtonBack(DOWN_MIDDLE);
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -588,7 +609,7 @@ static void screenSettingsAbout(void) {
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 140, DEF_N1_FONT_SIZE, OPT_CENTER, WELCOME_SW_VERSION
         CONFIG_SOFTWARE_VERSION);
     Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, 160, DEF_N1_FONT_SIZE, OPT_CENTER, DEF_WEBSITE);
-    constructButtonBack(DOWN_MIDDLE);
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -627,7 +648,7 @@ static void screenSettingsClock(const union state * state) {
     Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Set");
-    constructButtonBack(DOWN_LEFT);
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -652,7 +673,7 @@ static void screenSettingsCalibSensor(void) {
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
     Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Reset");
-    constructButtonBack(DOWN_MIDDLE);
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -670,7 +691,7 @@ static void screenSettingsCalibSensorZLH(const union state * state) {
         state->calibSensZHL.rawVacuum, state->calibSensZHL.rawFullScale);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Save");
-    constructButtonBack(DOWN_LEFT);
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -978,6 +999,10 @@ static esAction stateTest(void * space, const esEvent * event)
                 (const struct touchEvent *)event;
 
             switch (touchEvent->tag) {
+                case 'B' : {
+                    
+                    return (ES_STATE_TRANSITION(stateMain));
+                }
                 case 'R' : {
 
                     return (ES_STATE_TRANSITION(stateTest));
@@ -1021,7 +1046,7 @@ static esAction stateTestInProgress(void * space, const esEvent * event)
         }
         case EVT_PDETECT_RELEASE : {
 
-            return (ES_STATE_TRANSITION(stateTestResultReady));
+            return (ES_STATE_TRANSITION(stateTestResultReleased));
         }
         default : {
 
@@ -1186,20 +1211,24 @@ static esAction stateTestResultStatic(void * space, const esEvent * event) {
                 wspace->state.test.testResults.background = CLEAR_COLOR_RGB(16, 224, 16);
                 wspace->state.test.testResults.title      = "Porator PASSED";
                 wspace->state.test.testResults.button     = "PUT NEXT";
+                wspace->state.test.testResults.is_rbutton_active = false;
                 wspace->state.test.notification           = SuccessNotification;
             } else {
                 if (wspace->state.test.count < configGetRetryCount()) {
                     wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 224, 16);
                     wspace->state.test.testResults.title      = "Repeat Test";
                     wspace->state.test.testResults.button     = "REPEAT";
+                    wspace->state.test.testResults.is_rbutton_active = true;
                     wspace->state.test.notification           = ConfusedNotification;
                 } else {
                     wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 16, 16);
                     wspace->state.test.testResults.title      = "Porator FAILED";
                     wspace->state.test.testResults.button     = "PUT NEXT";
+                    wspace->state.test.testResults.is_rbutton_active = false;
                     wspace->state.test.notification           = FailNotification;
                 }
             }
+            wspace->state.test.testResults.is_bbutton_active = false;
             buzzerMelody(wspace->state.test.notification);
             screenTestResults(&wspace->state);
 
@@ -1210,18 +1239,9 @@ static esAction stateTestResultStatic(void * space, const esEvent * event) {
                 (const struct touchEvent *)event;
 
             switch (touchEvent->tag) {
-                case 'B' : {
-
-                    return (ES_STATE_TRANSITION(stateRemoveCurrent));
-                }
                 case 'R' : {
-                    if (wspace->state.test.count < configGetRetryCount()) {
 
-                        return (ES_STATE_TRANSITION(stateTestInProgress));
-                    } else {
-
-                        return (ES_STATE_TRANSITION(stateRemoveCurrent));
-                    }
+                    return (ES_STATE_TRANSITION(stateTestInProgress));
                 }
                 default: {
                     
@@ -1231,7 +1251,7 @@ static esAction stateTestResultStatic(void * space, const esEvent * event) {
         }
         case EVT_PDETECT_RELEASE : {
 
-            return (ES_STATE_TRANSITION(stateTestResultReady));
+            return (ES_STATE_TRANSITION(stateTestResultReleased));
         }
         default : {
 
@@ -1240,13 +1260,16 @@ static esAction stateTestResultStatic(void * space, const esEvent * event) {
     }
 }
 
-static esAction stateTestResultReady(void * space, const esEvent * event) {
+static esAction stateTestResultReleased(void * space, const esEvent * event) {
     struct wspace * wspace = space;
 
     switch (event->id) {
         case ES_ENTRY : {
             wspace->state.test.testResults.rawMax0Value = wspace->state.test.th[0].rawMaxValue;
             wspace->state.test.testResults.rawMax1Value = wspace->state.test.th[1].rawMaxValue;
+            wspace->state.test.testResults.button       = "PUT NEXT";
+            wspace->state.test.testResults.is_bbutton_active = true;
+            wspace->state.test.testResults.is_rbutton_active = false;
 
             if (wspace->state.test.th[0].state == TEST_VALID) {
                 wspace->state.test.testResults.state0 = "PASSED";
@@ -1264,19 +1287,18 @@ static esAction stateTestResultReady(void * space, const esEvent * event) {
                 (wspace->state.test.th[1].state == TEST_VALID)) {
                 wspace->state.test.testResults.background = CLEAR_COLOR_RGB(16, 224, 16);
                 wspace->state.test.testResults.title      = "Porator PASSED";
-                wspace->state.test.testResults.button     = "TEST NEXT";
             } else {
                 wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 16, 16);
                 wspace->state.test.testResults.title      = "Porator FAILED";
-                wspace->state.test.testResults.button     = "TEST NEXT";
             }
             screenTestResults(&wspace->state);
 
             return (ES_STATE_HANDLED());
         }
         case EVT_TOUCH_TAG : {
-            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
-            
+            const struct touchEvent * touchEvent =
+                (const struct touchEvent *)event;
+
             switch (touchEvent->tag) {
                 case 'B' : {
 
@@ -1287,6 +1309,61 @@ static esAction stateTestResultReady(void * space, const esEvent * event) {
                     return (ES_STATE_IGNORED());
                 }
             }
+        }
+        case EVT_PDETECT_PRESS : {
+
+            return (ES_STATE_TRANSITION(stateTestResultReady));
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateTestResultReady(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            wspace->state.test.testResults.rawMax0Value = wspace->state.test.th[0].rawMaxValue;
+            wspace->state.test.testResults.rawMax1Value = wspace->state.test.th[1].rawMaxValue;
+            wspace->state.test.testResults.button       = "TEST NEXT";
+            wspace->state.test.testResults.is_rbutton_active = true;
+            wspace->state.test.testResults.is_bbutton_active = false;
+
+            if (wspace->state.test.th[0].state == TEST_VALID) {
+                wspace->state.test.testResults.state0 = "PASSED";
+            } else {
+                wspace->state.test.testResults.state0 = "FAILED";
+            }
+
+            if (wspace->state.test.th[1].state == TEST_VALID) {
+                wspace->state.test.testResults.state1 = "PASSED";
+            } else {
+                wspace->state.test.testResults.state1 = "FAILED";
+            }
+
+            if ((wspace->state.test.th[0].state == TEST_VALID) &&
+                (wspace->state.test.th[1].state == TEST_VALID)) {
+                wspace->state.test.testResults.background = CLEAR_COLOR_RGB(16, 224, 16);
+                wspace->state.test.testResults.title      = "Porator PASSED";
+                
+            } else {
+                wspace->state.test.testResults.background = CLEAR_COLOR_RGB(224, 16, 16);
+                wspace->state.test.testResults.title      = "Porator FAILED";
+            }
+            screenTestResults(&wspace->state);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+
+            return (ES_STATE_IGNORED());
+        }
+        case EVT_PDETECT_RELEASE : {
+
+            return (ES_STATE_TRANSITION(stateTestResultReleased));
         }
         default : {
 
