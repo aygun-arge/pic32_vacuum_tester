@@ -311,6 +311,7 @@ static void constructButtonBack(enum buttonBackPos position, bool active) {
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
         Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(8, 120, 40));
     } else {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('b'));
         Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
         Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
     }
