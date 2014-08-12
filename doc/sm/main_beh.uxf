@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <diagram program="umlet" version="12.2">
-  <zoom_level>8</zoom_level>
+  <zoom_level>9</zoom_level>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>664</x>
-      <y>224</y>
-      <w>536</w>
-      <h>616</h>
+      <x>747</x>
+      <y>153</y>
+      <w>603</w>
+      <h>693</h>
     </coordinates>
     <panel_attributes>TestInProgress
 --
@@ -25,22 +25,22 @@ exit /
     <type>com.umlet.element.Relation</type>
     <coordinates>
       <x>0</x>
-      <y>464</y>
-      <w>202</w>
-      <h>106</h>
+      <y>423</y>
+      <w>222</w>
+      <h>120</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_PDETECTOR_PRESSED /
     isDutDetected = true</panel_attributes>
-    <additional_attributes>136;24;104;24;104;72;160;72;160;48</additional_attributes>
+    <additional_attributes>153;27;117;27;117;81;180;81;180;54</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>808</x>
-      <y>392</y>
-      <w>248</w>
-      <h>152</h>
+      <x>909</x>
+      <y>342</y>
+      <w>279</w>
+      <h>171</h>
     </coordinates>
     <panel_attributes>TestFirstTh
 --
@@ -53,46 +53,46 @@ entry /
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>336</x>
-      <y>400</y>
-      <w>316</w>
-      <h>56</h>
+      <x>387</x>
+      <y>351</y>
+      <w>345</w>
+      <h>63</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_TOUCH_TAG[(tag == 'T') &amp;&amp; isDutDetected]</panel_attributes>
-    <additional_attributes>280;40;48;40</additional_attributes>
+    <additional_attributes>306;45;45;45</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>8</x>
-      <y>440</y>
-      <w>192</w>
-      <h>136</h>
+      <x>9</x>
+      <y>396</y>
+      <w>215</w>
+      <h>153</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 MAIN_REFRESH_</panel_attributes>
-    <additional_attributes>128;24;72;24;72;120;176;120;176;72</additional_attributes>
+    <additional_attributes>144;27;81;27;81;135;198;135;198;81</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>760</x>
-      <y>520</y>
-      <w>322</w>
-      <h>136</h>
+      <x>864</x>
+      <y>486</y>
+      <w>354</w>
+      <h>152</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 FIRST_TH_REFRESH_[rawVacuum &gt;= rawThValue]</panel_attributes>
-    <additional_attributes>168;120;168;24</additional_attributes>
+    <additional_attributes>180;135;180;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>808</x>
-      <y>640</y>
-      <w>248</w>
-      <h>152</h>
+      <x>909</x>
+      <y>621</y>
+      <w>279</w>
+      <h>171</h>
     </coordinates>
     <panel_attributes>TestSecondTh
 --
@@ -105,10 +105,10 @@ entry /
   <element>
     <type>com.umlet.element.custom.InitialState</type>
     <coordinates>
-      <x>808</x>
-      <y>352</y>
-      <w>16</w>
-      <h>16</h>
+      <x>909</x>
+      <y>297</y>
+      <w>18</w>
+      <h>18</h>
     </coordinates>
     <panel_attributes/>
     <additional_attributes/>
@@ -116,70 +116,70 @@ entry /
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>800</x>
-      <y>336</y>
-      <w>144</w>
-      <h>72</h>
+      <x>900</x>
+      <y>279</y>
+      <w>161</w>
+      <h>80</h>
     </coordinates>
     <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>128;56;128;24;24;24</additional_attributes>
+    <additional_attributes>144;63;144;27;27;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>808</x>
-      <y>888</y>
-      <w>248</w>
-      <h>152</h>
+      <x>909</x>
+      <y>972</y>
+      <w>279</w>
+      <h>171</h>
     </coordinates>
     <panel_attributes>ResultOverviewStatic
 --
-</panel_attributes>
+EVT_TOUCH_TAG[TAG == 'b'] / HANDLED</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>752</x>
-      <y>768</y>
-      <w>342</w>
-      <h>136</h>
+      <x>855</x>
+      <y>765</y>
+      <w>376</w>
+      <h>224</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 SECOND_TH_REFRESH_ [rawVacuum &gt;= rawThValue]</panel_attributes>
-    <additional_attributes>176;120;176;24</additional_attributes>
+    <additional_attributes>189;207;189;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>672</x>
-      <y>696</y>
-      <w>174</w>
-      <h>256</h>
+      <x>1143</x>
+      <y>684</y>
+      <w>192</w>
+      <h>359</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 SECOND_TH_TIMEOUT_</panel_attributes>
-    <additional_attributes>136;240;88;240;88;24;136;24</additional_attributes>
+    <additional_attributes>45;342;99;342;99;27;45;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>1024</x>
-      <y>440</y>
-      <w>158</w>
-      <h>512</h>
+      <x>1161</x>
+      <y>396</y>
+      <w>219</w>
+      <h>710</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 FIRST_TH_TIMEOUT_</panel_attributes>
-    <additional_attributes>32;496;80;496;80;24;32;24</additional_attributes>
+    <additional_attributes>27;693;135;693;135;27;27;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>808</x>
-      <y>1184</y>
-      <w>248</w>
-      <h>144</h>
+      <x>909</x>
+      <y>1521</y>
+      <w>279</w>
+      <h>162</h>
     </coordinates>
     <panel_attributes>ResultOverviewReady
 --
@@ -189,34 +189,34 @@ FIRST_TH_TIMEOUT_</panel_attributes>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>152</x>
-      <y>488</y>
-      <w>672</w>
-      <h>808</h>
+      <x>261</x>
+      <y>450</y>
+      <w>665</w>
+      <h>927</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_TOUCH_TAG[tag == 'B']</panel_attributes>
-    <additional_attributes>104;24;104;792;656;792</additional_attributes>
+    <additional_attributes>117;27;117;909;648;909</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>1208</x>
-      <y>1208</y>
-      <w>206</w>
-      <h>88</h>
+      <x>1359</x>
+      <y>1494</y>
+      <w>226</w>
+      <h>98</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_TOUCH_TAG[tag == 'R']</panel_attributes>
-    <additional_attributes>40;24;104;24;104;72;40;72</additional_attributes>
+    <additional_attributes>45;27;117;27;117;81;45;81</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>616</x>
-      <y>88</y>
-      <w>632</w>
-      <h>1288</h>
+      <x>693</x>
+      <y>0</y>
+      <w>711</w>
+      <h>1737</h>
     </coordinates>
     <panel_attributes>Test
 --
@@ -232,21 +232,21 @@ exit /
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>656</x>
-      <y>168</y>
-      <w>144</w>
-      <h>72</h>
+      <x>738</x>
+      <y>90</y>
+      <w>161</w>
+      <h>80</h>
     </coordinates>
     <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>128;56;128;24;24;24</additional_attributes>
+    <additional_attributes>144;63;144;27;27;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.InitialState</type>
     <coordinates>
-      <x>664</x>
-      <y>184</y>
-      <w>16</w>
-      <h>16</h>
+      <x>747</x>
+      <y>108</y>
+      <w>18</w>
+      <h>18</h>
     </coordinates>
     <panel_attributes/>
     <additional_attributes/>
@@ -254,10 +254,10 @@ exit /
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>136</x>
-      <y>360</y>
-      <w>248</w>
-      <h>152</h>
+      <x>153</x>
+      <y>306</y>
+      <w>279</w>
+      <h>171</h>
     </coordinates>
     <panel_attributes>main
 --
@@ -269,97 +269,86 @@ entry /
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>608</x>
-      <y>816</y>
-      <w>216</w>
-      <h>432</h>
+      <x>684</x>
+      <y>819</y>
+      <w>242</w>
+      <h>504</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_PDETECTOR_RELEASED</panel_attributes>
-    <additional_attributes>200;416;104;416;104;24</additional_attributes>
+    <additional_attributes>225;486;117;486;117;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>824</x>
-      <y>1016</y>
-      <w>202</w>
-      <h>184</h>
+      <x>927</x>
+      <y>1116</y>
+      <w>222</w>
+      <h>152</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_PDETECTOR_RELEASED</panel_attributes>
-    <additional_attributes>104;168;104;24</additional_attributes>
+    <additional_attributes>117;135;117;27</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>1035</x>
+      <y>1386</y>
+      <w>189</w>
+      <h>152</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+EVT_PDETECTOR_PRESS</panel_attributes>
+    <additional_attributes>99;135;99;27</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>684</x>
+      <y>819</y>
+      <w>330</w>
+      <h>225</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+EVT_TOUCH_TAG[(tag == 'R') &amp;&amp; (count &lt; 2)]</panel_attributes>
+    <additional_attributes>171;27;171;207;225;207</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.custom.State</type>
     <coordinates>
-      <x>1336</x>
-      <y>896</y>
-      <w>248</w>
-      <h>144</h>
+      <x>909</x>
+      <y>1251</y>
+      <w>279</w>
+      <h>162</h>
     </coordinates>
-    <panel_attributes>RemoveCurrent
+    <panel_attributes>ResultOverviewReleased
 --
-bg=default</panel_attributes>
+</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>1024</x>
-      <y>952</y>
-      <w>140</w>
-      <h>56</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-
-EVT_TOUCH_TAG</panel_attributes>
-    <additional_attributes>112;40;32;40</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>232</x>
-      <y>0</y>
-      <w>1240</w>
-      <h>912</h>
+      <x>846</x>
+      <y>1386</y>
+      <w>222</w>
+      <h>152</h>
     </coordinates>
     <panel_attributes>lt=&lt;-
 EVT_PDETECTOR_RELEASED</panel_attributes>
-    <additional_attributes>24;360;24;40;1224;40;1224;896</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.custom.Decision</type>
-    <coordinates>
-      <x>1136</x>
-      <y>976</y>
-      <w>32</w>
-      <h>32</h>
-    </coordinates>
-    <panel_attributes/>
-    <additional_attributes/>
+    <additional_attributes>117;27;117;135</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>1104</x>
-      <y>952</y>
-      <w>288</w>
-      <h>56</h>
+      <x>1161</x>
+      <y>1530</y>
+      <w>260</w>
+      <h>63</h>
     </coordinates>
-    <panel_attributes>lt=&lt;-
-[(tag == 'R') &amp;&amp; (count == 2) || (tag == 'B')]</panel_attributes>
-    <additional_attributes>232;40;64;40</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>1048</x>
-      <y>816</y>
-      <w>206</w>
-      <h>176</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-
-[(tag == 'R') &amp;&amp; (count &lt; 2)]</panel_attributes>
-    <additional_attributes>104;24;104;160</additional_attributes>
+    <panel_attributes>lt=.
+- propagate -</panel_attributes>
+    <additional_attributes>243;45;27;45</additional_attributes>
   </element>
 </diagram>
