@@ -47,6 +47,7 @@ static void dataLogTableReset(struct dataLogTable * logTable) {
 esError initAppDataLog(void) {
     if (storageRead(ArrayStorage, &ArrayHandle) != ES_ERROR_NONE) {
         storageRegisterArray(&ArrayHandle, sizeof(struct dataLogEntry));
+        storageWrite(ArrayStorage, &ArrayHandle);
     }
     return (ES_ERROR_NONE);
 }
@@ -85,6 +86,10 @@ esError appDataLogSave(const struct appDataLog * dataLog) {
     esError                     error;
 
     error = storageArrayWrite(&ArrayHandle, dataLog);
+
+    if (!error) {
+        storageWrite(ArrayStorage, &ArrayHandle);
+    }
 
     return (error);
 }
