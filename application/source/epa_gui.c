@@ -222,6 +222,10 @@ struct wspace {
             esAction            nextState;
             uint32_t            timeout;
         }                   progress;
+        struct export {
+            uint32_t            numOfLogs;
+            uint32_t            currentNo;
+        }                   export;
     }                   state;
 };
 
@@ -492,7 +496,7 @@ static void screenExportMount(void) {
     gpuEnd();
 }
 
-static void screenExportSaving(void) {
+static void screenExportSaving(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Saving data...");
@@ -1962,10 +1966,6 @@ static esAction stateExport(void * space, const esEvent * event) {
     (void)space;
 
     switch (event->id) {
-        case ES_ENTRY: {
-
-            return (ES_STATE_HANDLED());
-        }
         case ES_INIT: {
             uint32_t            numOfLogs;
 
@@ -2066,7 +2066,7 @@ static esAction stateExportMount(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case ES_INIT: {
-            if (isUsbMounted()) {
+            if (isUsbDetected()) {
 
                 return (ES_STATE_TRANSITION(stateExportChoose));
             } else {
@@ -2088,8 +2088,6 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
         case ES_ENTRY: {
             struct appDataLog           dataLog;
             uint32_t                    numOfLogs;
-            uint8_t                     begin;
-            uint8_t                     end;
 
             appDataLogNumberOfEntries(&numOfLogs);
             appDataLogLoad(numOfLogs, &dataLog);
@@ -2179,7 +2177,11 @@ static esAction stateExportSaving(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            screenExportSaving();
+            appDataLogNumberOfEntries(&wspace->state.export.numOfLogs);
+            wspace->state.export.currentNo = 0u;
+            screenExportSaving(&wspace->state);
+            appDataLogExportInit();
+
             appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(2000), WAKEUP_TIMEOUT_);
 
             return (ES_STATE_HANDLED());
