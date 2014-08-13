@@ -117,6 +117,7 @@
     entry(stateSettingsCalibSensL,  TOP)                                        \
     entry(stateSettingsCalibSensH,  TOP)                                        \
     entry(stateExport,              TOP)                                        \
+    entry(stateExportNoData,        TOP)                                        \
     entry(stateExportInsert,        TOP)                                        \
     entry(stateExportMount,         TOP)                                        \
     entry(stateExportChoose,        TOP)                                        \
@@ -256,6 +257,7 @@ static esAction stateSettingsCalibSens  (void *, const esEvent *);
 static esAction stateSettingsCalibSensL (void *, const esEvent *);
 static esAction stateSettingsCalibSensH (void *, const esEvent *);
 static esAction stateExport             (void *, const esEvent *);
+static esAction stateExportNoData       (void *, const esEvent *);
 static esAction stateExportInsert       (void *, const esEvent *);
 static esAction stateExportMount        (void *, const esEvent *);
 static esAction stateExportChoose       (void *, const esEvent *);
@@ -459,6 +461,16 @@ static void screenTestSaving(const union state * state) {
     Ft_Gpu_CoCmd_Text(&Gpu, 160,  200, DEF_N1_FONT_SIZE, OPT_CENTER, "Saving record number:");
     Ft_Gpu_CoCmd_Number(&Gpu, 240,  200, DEF_N1_FONT_SIZE, OPT_CENTERY, state->testReport.nEntries);
     Ft_Gpu_CoCmd_Spinner(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, 0, 0);
+    gpuEnd();
+}
+
+static void screenExportNoData(void) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("Export");
+    Ft_Gpu_CoCmd_Text(&Gpu, DISP_WIDTH / 2, DISP_HEIGHT / 2, DEF_N1_FONT_SIZE, OPT_CENTER,
+        "There is no data log to export");
+    constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
 
@@ -1955,12 +1967,46 @@ static esAction stateExport(void * space, const esEvent * event) {
             return (ES_STATE_HANDLED());
         }
         case ES_INIT: {
-            if (isUsbDetected()) {
+            uint32_t            numOfLogs;
+
+            appDataLogNumberOfEntries(&numOfLogs);
+
+            if (numOfLogs == 0) {
+
+                return (ES_STATE_TRANSITION(stateExportNoData));
+            } else if (isUsbDetected()) {
 
                 return (ES_STATE_TRANSITION(stateExportMount));
             } else {
 
                 return (ES_STATE_TRANSITION(stateExportInsert));
+            }
+        }
+        default : {
+
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
+static esAction stateExportNoData(void * space, const esEvent * event) {
+    (void)space;
+
+    switch (event->id) {
+        case ES_ENTRY: {
+            screenExportNoData();
+            
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+
+            if (touchEvent->tag == 'B') {
+
+                return (ES_STATE_TRANSITION(stateMain));
+            } else {
+
+                return (ES_STATE_HANDLED());
             }
         }
         default : {
@@ -2040,18 +2086,24 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            struct appTime currentTime;
+            struct appDataLog           dataLog;
+            uint32_t                    numOfLogs;
+            uint8_t                     begin;
+            uint8_t                     end;
 
-            appTimeGet(&currentTime);
-            wspace->state.exportChoose.begin[EXPORT_DAY]   = 20;
-            wspace->state.exportChoose.begin[EXPORT_MONTH] = 4;
-            wspace->state.exportChoose.begin[EXPORT_YEAR]  = 2014;
-            wspace->state.exportChoose.end[EXPORT_DAY]     = currentTime.day;
-            wspace->state.exportChoose.end[EXPORT_MONTH]   = currentTime.month;
-            wspace->state.exportChoose.end[EXPORT_YEAR]    = currentTime.year;
+            appDataLogNumberOfEntries(&numOfLogs);
+            appDataLogLoad(numOfLogs, &dataLog);
+            wspace->state.exportChoose.end[EXPORT_DAY]     = dataLog.timestamp.day;
+            wspace->state.exportChoose.end[EXPORT_MONTH]   = dataLog.timestamp.month;
+            wspace->state.exportChoose.end[EXPORT_YEAR]    = dataLog.timestamp.year;
+            appDataLogLoad(0, &dataLog);
+            wspace->state.exportChoose.begin[EXPORT_DAY]   = dataLog.timestamp.day;
+            wspace->state.exportChoose.begin[EXPORT_MONTH] = dataLog.timestamp.month;
+            wspace->state.exportChoose.begin[EXPORT_YEAR]  = dataLog.timestamp.year;
             wspace->state.exportChoose.focus               = 0;
             screenExportChoose(&wspace->state);
-            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(100), EXPORT_CHOOSE_REFRESH_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(100),
+                    EXPORT_CHOOSE_REFRESH_);
 
             return (ES_STATE_HANDLED());
         }
@@ -2061,6 +2113,8 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
                 
                 return (ES_STATE_TRANSITION(stateMain));
             } else {
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(100),
+                    EXPORT_CHOOSE_REFRESH_);
                 
                 return (ES_STATE_HANDLED());
             }
