@@ -1,6 +1,7 @@
 
 #include "app_data_log.h"
 #include "app_storage.h"
+#include "MDD File System/FSIO.h"
 
 #define APP_DATA_LOG_SIGNATURE          0xdedefefeu
 
@@ -88,7 +89,7 @@ esError appDataLogSave(const struct appDataLog * dataLog) {
     error = storageArrayWrite(&ArrayHandle, dataLog);
 
     if (!error) {
-        storageWrite(ArrayStorage, &ArrayHandle);
+        error = storageWrite(ArrayStorage, &ArrayHandle);
     }
 
     return (error);
@@ -113,5 +114,32 @@ esError appDataLogHeadId(uint32_t * headId) {
 esError appDataLogLoad(uint32_t entryId, struct appDataLog * dataLog) {
 
     return (storageArrayRead(&ArrayHandle, entryId, dataLog));
+}
+
+esError appDataLogExportInit(void) {
+
+    if (FSInit()) {
+
+        return (ES_ERROR_NONE);
+    } else {
+
+        return (ES_ERROR_NOT_FOUND);
+    }
+}
+
+esError appDataLogExport(uint32_t entryId) {
+    FSFILE *                    fileHandle;
+    esError                     error;
+    struct appDataLog           currentLog;
+
+    error = appDataLogLoad(entryId, &currentLog);
+
+    if (error) {
+        return (error);
+    }
+
+    fileHandle = FSfopen("test.txt","w");
+    FSfwrite("This is a test.", 1, 15, fileHandle);
+    FSfclose(fileHandle);
 }
 #endif
