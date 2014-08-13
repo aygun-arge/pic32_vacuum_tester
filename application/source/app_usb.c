@@ -205,11 +205,6 @@ bool isUsbDetected(void) {
     }
 }
 
-bool isUsbMounted(void) {
-
-    return (FSInit());
-}
-
 uint32_t snprintUsbStatus(char * buffer) {
 
     if (isUsbDetected()) {
