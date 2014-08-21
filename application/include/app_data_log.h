@@ -45,6 +45,7 @@ esError appDataLogNumberOfEntries(uint32_t * nEntries);
 esError appDataLogHeadId(uint32_t * headId);
 esError appDataLogLoad(uint32_t entryId, struct appDataLog * dataLog);
 esError appDataLogExportInit(void);
+esError appDataLogExportTerm(void);
 esError appDataLogExport(uint32_t entryId);
 
 #ifdef	__cplusplus

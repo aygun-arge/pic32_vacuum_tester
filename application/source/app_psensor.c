@@ -79,3 +79,14 @@ void updateDutSecondTh(void) {
         MaxSecondVacuum = current;
     }
 }
+
+uint32_t dutRawToMm(uint32_t rawValue) {
+
+    return (rawValue);
+}
+
+uint32_t dutMmToRaw(uint32_t mmValue) {
+
+    return (mmValue);
+}
+

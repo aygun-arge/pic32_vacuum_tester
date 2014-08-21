@@ -10,7 +10,7 @@
 #include <xc.h>
 
 #define CONFIG_DEFAULT_YEAR             2014
-#define CONFIG_DEFAULT_MONTH            6
+#define CONFIG_DEFAULT_MONTH            1
 #define CONFIG_DEFAULT_DAY              1
 #define CONFIG_DEFAULT_HOUR             0
 #define CONFIG_DEFAULT_MINUTE           0
@@ -326,6 +326,12 @@ void initRtcDriver(void) {
 
     return;
 FAILURE:
+    CurrentTime.year   = CONFIG_DEFAULT_YEAR;
+    CurrentTime.month  = CONFIG_DEFAULT_MONTH;
+    CurrentTime.day    = CONFIG_DEFAULT_DAY;
+    CurrentTime.hour   = CONFIG_DEFAULT_HOUR;
+    CurrentTime.minute = CONFIG_DEFAULT_MINUTE;
+    CurrentTime.second = CONFIG_DEFAULT_SECOND;
 
     return;
 }

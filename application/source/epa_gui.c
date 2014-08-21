@@ -99,7 +99,6 @@
     entry(stateZeroCalib,           TOP)                                        \
     entry(stateMain,                TOP)                                        \
     entry(stateProgress,            TOP)                                        \
-    entry(stateRemoveCurrent,       TOP)                                        \
     entry(stateTest,                TOP)                                        \
     entry(stateTestInProgress,      stateTest)                                  \
     entry(stateTestFirstTh,         stateTestInProgress)                        \
@@ -112,6 +111,8 @@
     entry(stateSettingsAuthorize,   TOP)                                        \
     entry(stateSettingsAdmin,       TOP)                                        \
     entry(stateSettingsClock,       TOP)                                        \
+    entry(stateSettingsParameter,   TOP)                                        \
+    entry(stateSettingsPassword,    TOP)                                        \
     entry(stateSettingsCalibLcd,    TOP)                                        \
     entry(stateSettingsCalibSens,   TOP)                                        \
     entry(stateSettingsCalibSensL,  TOP)                                        \
@@ -156,6 +157,18 @@ enum testState {
 enum buttonBackPos {
     DOWN_LEFT,
     DOWN_MIDDLE,
+};
+
+enum inputBoxValueType {
+    VAL_IS_HIDDEN,
+    VAL_IS_ASTERIX,
+    VAL_IS_VISIBLE
+};
+
+enum inputBoxConfirmType {
+    CONFIRM_IS_HIDDEN,
+    CONFIRM_IS_DISABLED,
+    CONFIRM_IS_VISIBLE
 };
 
 struct wspace {
@@ -205,6 +218,7 @@ struct wspace {
             uint32_t            begin[3];
             uint32_t            end[3];
             uint32_t            focus;
+            bool                isExportEnabled;
         }                   exportChoose;
         struct settingsClock {
             uint32_t            focus;
@@ -226,6 +240,13 @@ struct wspace {
             uint32_t            numOfLogs;
             uint32_t            currentNo;
         }                   export;
+        struct inputBox {
+            const char *        title;
+            uint32_t            value;
+            enum inputBoxValueType   valueType;
+            enum inputBoxConfirmType confirmType;
+            const char *        confirm;
+        }               inputBox;
     }                   state;
 };
 
@@ -243,7 +264,6 @@ static esAction stateWelcome            (void *, const esEvent *);
 static esAction stateZeroCalib          (void *, const esEvent *);
 static esAction stateMain               (void *, const esEvent *);
 static esAction stateProgress           (void *, const esEvent *);
-static esAction stateRemoveCurrent      (void *, const esEvent *);
 static esAction stateTest               (void *, const esEvent *);
 static esAction stateTestInProgress     (void *, const esEvent *);
 static esAction stateTestFirstTh        (void *, const esEvent *);
@@ -256,6 +276,8 @@ static esAction stateSettingsAbout      (void *, const esEvent *);
 static esAction stateSettingsAuthorize  (void *, const esEvent *);
 static esAction stateSettingsAdmin      (void *, const esEvent *);
 static esAction stateSettingsClock      (void *, const esEvent *);
+static esAction stateSettingsParameter  (void *, const esEvent *);
+static esAction stateSettingsPassword   (void *, const esEvent *);
 static esAction stateSettingsCalibLcd   (void *, const esEvent *);
 static esAction stateSettingsCalibSens  (void *, const esEvent *);
 static esAction stateSettingsCalibSensL (void *, const esEvent *);
@@ -508,18 +530,6 @@ static void screenExportChoose(const union state * state) {
     gpuBegin();
     constructBackground(0);
     constructTitle("Export");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
-    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
-    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
-    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Export");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(0, 0, 0));
 
     if (state->exportChoose.focus == 0) {
@@ -561,6 +571,28 @@ static void screenExportChoose(const union state * state) {
     }
     Ft_Gpu_CoCmd_Text(&Gpu, 125,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
     Ft_Gpu_CoCmd_Text(&Gpu, 175,  140,  DEF_N1_FONT_SIZE, OPT_CENTER, "-");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('>'));
+    Ft_Gpu_CoCmd_Button(&Gpu,  20, 60, 40, 40, DEF_B1_FONT_SIZE, 0, ">");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('<'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "<");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('+'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 60, 40, 40, DEF_B1_FONT_SIZE, 0, "+");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('-'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 260, 120, 40, 40, DEF_B1_FONT_SIZE, 0, "-");
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
+
+    if (state->exportChoose.isExportEnabled) {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(8, 120, 40));
+    } else {
+        Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('e'));
+        Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
+        Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
+    }
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Export");
+    Ft_Gpu_CoCmd_ColdStart(&Gpu);
     gpuEnd();
 }
 
@@ -685,11 +717,11 @@ static void screenSettingsCalibSensor(void) {
     constructTitle("Calibrate Sensor");
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('L'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "5 " DEF_VACUUM_UNIT);
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "1st Threshold" DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('H'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "10 " DEF_VACUUM_UNIT);
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "2nd Threshold" DEF_VACUUM_UNIT);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
-    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Reset");
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "Defaults");
     constructButtonBack(DOWN_MIDDLE, B_IS_ACTIVE);
     gpuEnd();
 }
@@ -702,12 +734,73 @@ static void screenSettingsCalibSensorZLH(const union state * state) {
     Ft_Gpu_CoCmd_Text(&Gpu,   POS_COLUMN_18,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY, "[" DEF_VACUUM_UNIT "]:");
     Ft_Gpu_CoCmd_Number(&Gpu, POS_COLUMN_25,  POS_ROW_1, DEF_N1_FONT_SIZE, OPT_CENTERY,
         state->calibSensZHL.vacuumTarget);
-    Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER, state->calibSensZHL.rawVacuum);
+    Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER, dutRawToMm(state->calibSensZHL.rawVacuum));
     Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
     Ft_Gpu_CoCmd_Progress(&Gpu, POS_COLUMN_4, POS_ROW_1_5 - 5, DISP_WIDTH - (POS_COLUMN_4 * 2), 10, 0,
-        state->calibSensZHL.rawVacuum, state->calibSensZHL.rawFullScale);
+        state->calibSensZHL.rawVacuum,
+        state->calibSensZHL.rawFullScale);
     Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('S'));
     Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, "Save");
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
+    gpuEnd();
+}
+
+static void screenSettingsParameter(const union state * state) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle("Parameters");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('Q'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  60, 130, 40, DEF_N1_FONT_SIZE, 0, "1st Threshold");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('W'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 60, 130, 40, DEF_N1_FONT_SIZE, 0, "2nd Threshold");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('E'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 20,  120, 130, 40, DEF_N1_FONT_SIZE, 0, "1st Timeout");
+    Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('R'));
+    Ft_Gpu_CoCmd_Button(&Gpu, 170, 120, 130, 40, DEF_N1_FONT_SIZE, 0, "2nd Timeout");
+    constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
+    gpuEnd();
+}
+
+static void screenInputBox(const union state * state) {
+    gpuBegin();
+    constructBackground(0);
+    constructTitle(state->inputBox.title);
+    Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(255, 255, 255));
+
+    switch (state->inputBox.valueType) {
+        case VAL_IS_VISIBLE : {
+            Ft_Gpu_CoCmd_Number(&Gpu, DISP_WIDTH / 2,  POS_ROW_2, DEF_N2_FONT_SIZE, OPT_CENTER, state->inputBox.value);
+            break;
+        }
+        case VAL_IS_ASTERIX : {
+            /*TODO*/
+            break;
+        }
+        default : {
+            break;
+        }
+    }
+
+    switch (state->inputBox.confirmType) {
+        case CONFIRM_IS_VISIBLE : {
+            Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('C'));
+            Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, state->inputBox.confirm);
+        }
+        case CONFIRM_IS_DISABLED : {
+            Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('c'));
+            Ft_Gpu_Hal_WrCmd32(&Gpu, COLOR_RGB(92, 92, 92));
+            Ft_Gpu_CoCmd_FgColor(&Gpu, COLOR_RGB(112, 112, 112));
+            Ft_Gpu_CoCmd_Button(&Gpu, 170, 180, 130, 40, DEF_N1_FONT_SIZE, 0, state->inputBox.confirm);
+            Ft_Gpu_CoCmd_ColdStart(&Gpu);
+        }
+        default : {
+            Ft_Gpu_Hal_WrCmd32(&Gpu, TAG('c'));
+            break;
+        }
+    }
+    Ft_Gpu_CoCmd_Keys(&Gpu,20, 80, 280, 40, DEF_N1_FONT_SIZE, 0, "12345");
+    Ft_Gpu_CoCmd_Keys(&Gpu,20, 122, 280, 40, DEF_N1_FONT_SIZE, 0, "67890");
     constructButtonBack(DOWN_LEFT, B_IS_ACTIVE);
     gpuEnd();
 }
@@ -951,25 +1044,6 @@ static esAction stateMain(void * space, const esEvent * event) {
     }
 }
 
-static esAction stateRemoveCurrent(void * space, const esEvent * event)
-{
-    switch (event->id) {
-        case ES_ENTRY : {
-            /*
-             * TODO: Notify user
-             */
-            return (ES_STATE_HANDLED());
-        }
-        case EVT_PDETECT_RELEASE : {
-            return (ES_STATE_TRANSITION(stateMain));
-        }
-        default : {
-
-            return (ES_STATE_IGNORED());
-        }
-    }
-}
-
 static esAction stateTest(void * space, const esEvent * event)
 {
     struct wspace *             wspace = space;
@@ -1048,12 +1122,12 @@ static esAction stateTestInProgress(void * space, const esEvent * event)
     switch (event->id) {
         case ES_ENTRY : {
             wspace->state.test.count++;
-            //motorEnable();
+            motorEnable();
 
             return (ES_STATE_HANDLED());
         }
         case ES_EXIT : {
-            //motorDisable();
+            motorDisable();
             
             return (ES_STATE_HANDLED());
         }
@@ -1541,9 +1615,17 @@ static esAction stateSettingsAdmin(void * space, const esEvent * event) {
 
                     return (ES_STATE_TRANSITION(stateSettingsClock));
                 }
+                case 'G' : {
+                    
+                    return (ES_STATE_TRANSITION(stateSettingsParameter));
+                }
                 case 'L' : {
 
                     return (ES_STATE_TRANSITION(stateSettingsCalibLcd));
+                }
+                case 'P' : {
+                    
+                    return (ES_STATE_TRANSITION(stateSettingsPassword));
                 }
                 case 'B' : {
 
@@ -1563,6 +1645,36 @@ static esAction stateSettingsAdmin(void * space, const esEvent * event) {
     }
 }
 
+static esAction stateSettingsPassword(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+
+    switch (event->id) {
+        case ES_ENTRY : {
+            wspace->state.inputBox.title = "Enter new password";
+            wspace->state.inputBox.value = 0;
+            wspace->state.inputBox.valueType = VAL_IS_HIDDEN;
+            wspace->state.inputBox.confirm   = "Save";
+            wspace->state.inputBox.confirmType = CONFIRM_IS_DISABLED;
+
+            screenInputBox(&wspace->state);
+
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+
+            switch (touchEvent->tag) {
+                case 'B' : {
+                    
+                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                }
+            }
+        }
+        default : {
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
 static esAction stateSettingsCalibLcd(void * space, const esEvent * event) {
     struct wspace * wspace = space;
 
@@ -1679,7 +1791,10 @@ static esAction stateSettingsCalibSensL(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY : {
-            wspace->state.calibSensZHL.vacuumTarget = 5;
+            uint32_t            rawVacuumTarget;
+
+            rawVacuumTarget = configGetTh0RawVacuum();
+            wspace->state.calibSensZHL.vacuumTarget = dutRawToMm(rawVacuumTarget);
             wspace->state.calibSensZHL.rawFullScale = wspace->rawIdleVacuum;
             wspace->state.calibSensZHL.rawVacuum    = min(getDutRawValue(), wspace->rawIdleVacuum);
             screenSettingsCalibSensorZLH(&wspace->state);
@@ -1962,6 +2077,48 @@ static esAction stateSettingsClock(void * space, const esEvent * event) {
     }
 }
 
+static esAction stateSettingsParameter(void * space, const esEvent * event) {
+    struct wspace * wspace = space;
+    
+    switch (event->id) {
+        case ES_ENTRY : {
+            screenSettingsParameter(&wspace->state);
+            
+            return (ES_STATE_HANDLED());
+        }
+        case EVT_TOUCH_TAG : {
+            const struct touchEvent * touch = 
+                (const struct touchEvent *)event;
+                
+            switch (touch->tag) {
+#if 0
+                case 'Q' : {
+                    return (ES_STATE_TRANSITION(/*TODO*/));
+                }
+                case 'W' : {
+                    return (ES_STATE_TRANSITION(/*TODO*/));
+                }
+                case 'E' : {
+                    return (ES_STATE_TRANSITION(/*TODO*/));
+                }
+                case 'R' : {
+                    return (ES_STATE_TRANSITION(/*TODO*/));
+                }
+                case 'T' : {
+                    return (ES_STATE_TRANSITION(/*TODO*/));
+                }
+#endif
+                case 'B' : {
+                    return (ES_STATE_TRANSITION(stateSettingsAdmin));
+                }
+            }
+        }
+        default : {
+            return (ES_STATE_IGNORED());
+        }
+    }
+}
+
 static esAction stateExport(void * space, const esEvent * event) {
     (void)space;
 
@@ -2021,7 +2178,7 @@ static esAction stateExportInsert(void * space, const esEvent * event) {
 
     switch (event->id) {
         case ES_ENTRY: {
-            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS), EXPORT_INSERT_REFRESH_);
+            appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS), EXPORT_INSERT_REFRESH_);
             screenExportInsert();
 
             return (ES_STATE_HANDLED());
@@ -2032,7 +2189,7 @@ static esAction stateExportInsert(void * space, const esEvent * event) {
 
                 return (ES_STATE_TRANSITION(stateExportMount));
             } else {
-                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_TOUCH_REFRESH_MS),
+                appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(CONFIG_MAIN_REFRESH_MS),
                     EXPORT_INSERT_REFRESH_);
 
                 return (ES_STATE_HANDLED());
@@ -2090,7 +2247,7 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
             uint32_t                    numOfLogs;
 
             appDataLogNumberOfEntries(&numOfLogs);
-            appDataLogLoad(numOfLogs, &dataLog);
+            appDataLogLoad(numOfLogs - 1u, &dataLog);
             wspace->state.exportChoose.end[EXPORT_DAY]     = dataLog.timestamp.day;
             wspace->state.exportChoose.end[EXPORT_MONTH]   = dataLog.timestamp.month;
             wspace->state.exportChoose.end[EXPORT_YEAR]    = dataLog.timestamp.year;
@@ -2099,6 +2256,7 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
             wspace->state.exportChoose.begin[EXPORT_MONTH] = dataLog.timestamp.month;
             wspace->state.exportChoose.begin[EXPORT_YEAR]  = dataLog.timestamp.year;
             wspace->state.exportChoose.focus               = 0;
+            wspace->state.exportChoose.isExportEnabled     = true;
             screenExportChoose(&wspace->state);
             appTimerStart(&wspace->refresh, ES_VTMR_TIME_TO_TICK_MS(100),
                     EXPORT_CHOOSE_REFRESH_);
@@ -2119,6 +2277,8 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
         }
         case EVT_TOUCH_TAG : {
             const struct touchEvent * touchEvent = (const struct touchEvent *)event;
+            uint32_t            daysBegin;
+            uint32_t            daysEnd;
 
             switch (touchEvent->tag) {
                 case 'B': {
@@ -2126,14 +2286,20 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
                     return (ES_STATE_TRANSITION(stateMain));
                 }
                 case '>' : {
+                    
                     if (wspace->state.exportChoose.focus == 5u) {
                         wspace->state.exportChoose.focus = 0u;
+                    } else {
+                        wspace->state.exportChoose.focus++;
                     }
                     break;
                 }
                 case '<' : {
+                    
                     if (wspace->state.exportChoose.focus == 0u) {
                         wspace->state.exportChoose.focus = 5u;
+                    } else {
+                        wspace->state.exportChoose.focus--;
                     }
                     break;
                 }
@@ -2147,19 +2313,58 @@ static esAction stateExportChoose(void * space, const esEvent * event) {
                 }
                 case '-' : {
                     if (wspace->state.exportChoose.focus < 3) {
-                        wspace->state.exportChoose.begin[wspace->state.exportChoose.focus]--;
+                        if (wspace->state.exportChoose.begin[wspace->state.exportChoose.focus] != 1) {
+                            wspace->state.exportChoose.begin[wspace->state.exportChoose.focus]--;
+                        }
                     } else {
-                        wspace->state.exportChoose.end[wspace->state.exportChoose.focus - 3]--;
+                        if (wspace->state.exportChoose.end[wspace->state.exportChoose.focus - 3] != 1) {
+                            wspace->state.exportChoose.end[wspace->state.exportChoose.focus - 3]--;
+                        }
                     }
                     break;
                 }
                 case 'E' : {
-
                     return (ES_STATE_TRANSITION(stateExportSaving));
                 }
                 default: {
                     break;
                 }
+            }
+            if (wspace->state.exportChoose.begin[EXPORT_DAY] > 31) {
+                wspace->state.exportChoose.begin[EXPORT_DAY] = 31;
+            }
+            if (wspace->state.exportChoose.end[EXPORT_DAY] > 31) {
+                wspace->state.exportChoose.end[EXPORT_DAY] = 31;
+            }
+            if (wspace->state.exportChoose.begin[EXPORT_MONTH] > 12) {
+                wspace->state.exportChoose.begin[EXPORT_MONTH] = 12;
+            }
+            if (wspace->state.exportChoose.end[EXPORT_MONTH] > 12) {
+                wspace->state.exportChoose.end[EXPORT_MONTH] = 12;
+            }
+            if (wspace->state.exportChoose.begin[EXPORT_YEAR] > 2020) {
+                wspace->state.exportChoose.begin[EXPORT_YEAR] = 2020;
+            }
+            if (wspace->state.exportChoose.end[EXPORT_YEAR] > 2020) {
+                wspace->state.exportChoose.end[EXPORT_YEAR] = 2020;
+            }
+            if (wspace->state.exportChoose.begin[EXPORT_YEAR] < 2014) {
+                wspace->state.exportChoose.begin[EXPORT_YEAR] = 2014;
+            }
+            if (wspace->state.exportChoose.end[EXPORT_YEAR] < 2014) {
+                wspace->state.exportChoose.end[EXPORT_YEAR] = 2014;
+            }
+            daysBegin = wspace->state.exportChoose.begin[EXPORT_DAY]   +
+                        (wspace->state.exportChoose.begin[EXPORT_MONTH] * 31ul) +
+                        (wspace->state.exportChoose.begin[EXPORT_YEAR]  * 31ul * 12ul);
+            daysEnd   = wspace->state.exportChoose.end[EXPORT_DAY]   +
+                        (wspace->state.exportChoose.end[EXPORT_MONTH] * 31ul) +
+                        (wspace->state.exportChoose.end[EXPORT_YEAR]  * 31ul * 12ul);
+
+            if (daysBegin <= daysEnd) {
+                wspace->state.exportChoose.isExportEnabled = true;
+            } else {
+                wspace->state.exportChoose.isExportEnabled = false;
             }
             screenExportChoose(&wspace->state);
 
@@ -2181,14 +2386,31 @@ static esAction stateExportSaving(void * space, const esEvent * event) {
             wspace->state.export.currentNo = 0u;
             screenExportSaving(&wspace->state);
             appDataLogExportInit();
+            
+            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(100), WAKEUP_TIMEOUT_);
 
-            appTimerStart(&wspace->timeout, ES_VTMR_TIME_TO_TICK_MS(2000), WAKEUP_TIMEOUT_);
+            return (ES_STATE_HANDLED());
+        }
+        case ES_INIT: {
+            /*TODO: Notify bad drive.*/
+            if (appDataLogExportInit() != ES_ERROR_NONE) {
+                return (ES_STATE_TRANSITION(stateExport));
+            }
 
             return (ES_STATE_HANDLED());
         }
         case WAKEUP_TIMEOUT_: {
+            uint32_t entries;
+            uint32_t entryNo;
 
-            return (ES_STATE_TRANSITION(stateExport));
+            appDataLogNumberOfEntries(&entries);
+
+            for (entryNo = 0; entryNo < entries; entryNo++) {
+                appDataLogExport(entryNo);
+            }
+            appDataLogExportTerm();
+
+            return (ES_STATE_TRANSITION(stateMain));
         }
         default : {
 

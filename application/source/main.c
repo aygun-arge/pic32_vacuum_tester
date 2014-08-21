@@ -41,7 +41,7 @@
 /*=========================================================  LOCAL MACRO's  ==*/
 
 #define CONFIG_EDS_STATIC_SIZE          16384
-#define CONFIG_EVENT_HEAP_SIZE          8192
+#define CONFIG_EVENT_HEAP_SIZE          4096
 
 /*======================================================  LOCAL DATA TYPES  ==*/
 /*=============================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -53,7 +53,6 @@ static void nativeFsm(void);
 static const ES_MODULE_INFO_CREATE("main", "main loop", "Nenad Radulovic");
 
 static uint8_t          StaticMemBuff[CONFIG_EDS_STATIC_SIZE];
-
 
 
 /*======================================================  GLOBAL VARIABLES  ==*/

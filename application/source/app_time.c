@@ -1,8 +1,8 @@
 
 #include <stdio.h>
-#include <string.h>
 
 #include "app_time.h"
+#include "app_string.h"
 #include "driver/rtc.h"
 
 #define APPTIME_AM_STRING               "AM"
@@ -106,29 +106,34 @@ size_t snprintRtcDaySelector(const struct appTime * time, char * buffer) {
         [APPTIME_AM] = APPTIME_AM_STRING,
         [APPTIME_PM] = APPTIME_PM_STRING
     };
-    static const size_t daySelectorSize[] = {
-        [APPTIME_AM] = sizeof(APPTIME_AM_STRING),
-        [APPTIME_PM] = sizeof(APPTIME_PM_STRING)
-    };
-    strcpy(buffer, daySelector[time->daySelector]);
 
-    return (daySelectorSize[time->daySelector]);
+    return (nstrcpy(buffer, daySelector[time->daySelector]));
 }
 
 size_t snprintRtcTime(const struct appTime * time, char * buffer) {
     size_t              length;
 
     length = 0;
-    sprintf(&buffer[length], "%2d:%2d ", time->hour, time->minute);
-    length += 6;
+    length += sprintUint32(&buffer[length], time->hour);
+    length += nstrcpy(&buffer[length], ":");
+    length += sprintUint32(&buffer[length], time->minute);
+    length += nstrcpy(&buffer[length], " ");
     length += snprintRtcDaySelector(time, &buffer[length]);
+    buffer[length] = '\0';
 
     return (length);
 }
 
 size_t snprintRtcDate(const struct appTime * time, char * buffer) {
+    size_t              length;
 
-    sprintf(buffer, "%2d-%2d-%4d", time->month, time->day, time->year);
+    length = 0;
+    length += sprintUint32(&buffer[length], time->month);
+    length += nstrcpy(&buffer[length], "-");
+    length += sprintUint32(&buffer[length], time->day);
+    length += nstrcpy(&buffer[length], "-");
+    length += sprintUint32(&buffer[length], time->year);
+    buffer[length] = '\0';
 
-    return (11);
+    return (length);
 }

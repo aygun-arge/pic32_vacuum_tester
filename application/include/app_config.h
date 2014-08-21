@@ -31,10 +31,12 @@ bool configSetTh1RawVacuum(uint32_t rawVacuum);
 
 uint32_t configGetTh0Timeout(void);
 uint32_t configGetTh0RawVacuum(void);
+uint32_t configGetTh0Vacuum(void);
 uint32_t configGetTh1Timeout(void);
 uint32_t configGetTh1RawVacuum(void);
 uint32_t configGetTh0DefaultTimeout(void);
 uint32_t configGetTh0DefaultRawVacuum(void);
+uint32_t configGetTh0DefaultVacuum(void);
 uint32_t configGetTh1DefaultTimeout(void);
 uint32_t configGetTh1DefaultRawVacuum(void);
 uint32_t configGetRetryCount(void);

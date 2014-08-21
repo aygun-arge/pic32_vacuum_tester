@@ -7,8 +7,10 @@
 #define CONFIG_DEF_RAW_IDLE_VACUUM      270
 #define CONFIG_DEF_TH0_TIMEOUT          500
 #define CONFIG_DEF_TH0_RAW_VACUUM       70
+#define CONFIG_DEF_TH0_VACUUM           5
 #define CONFIG_DEF_TH1_TIMEOUT          1000
 #define CONFIG_DEF_TH1_RAW_VACUUM       84
+#define CONFIG_DEF_TH1_VACUUM           10
 #define CONFIG_DEF_RETRY_COUNT          2
 #define CONFIG_DEF_PASSWORD             "1248"
 
@@ -16,6 +18,7 @@ struct config {
     struct th {
         uint32_t        time;
         uint32_t        rawVacuum;
+        uint32_t        vacuum;
     }                   th[2];
     char                password[4];
 };
@@ -30,9 +33,9 @@ const struct storageEntry ConfigStorage = {
 
 static void appConfigReset(struct config * config) {
     config->th[0].time      = CONFIG_DEF_TH0_TIMEOUT;
-    config->th[0].rawVacuum = CONFIG_DEF_TH0_RAW_VACUUM;
+    config->th[0].rawVacuum = CONFIG_DEF_TH0_RAW_VACUUM;/*TODO: konvertuj iz RAW u mm */
     config->th[1].time      = CONFIG_DEF_TH1_TIMEOUT;
-    config->th[1].rawVacuum = CONFIG_DEF_TH1_RAW_VACUUM;
+    config->th[1].rawVacuum = CONFIG_DEF_TH1_RAW_VACUUM;/*TODO: konvertuj iz RAW u mm */
     config->password[0]     = CONFIG_DEF_PASSWORD[0];
     config->password[1]     = CONFIG_DEF_PASSWORD[1];
     config->password[2]     = CONFIG_DEF_PASSWORD[2];
@@ -141,9 +144,22 @@ uint32_t configGetTh0RawVacuum(void) {
     return (config.th[0].rawVacuum);
 }
 
+uint32_t configGetTh0Vacuum(void) {
+    struct config       config;
+
+    storageRead(Storage, &config);
+
+    return (config.th[0].vacuum);
+}
+
 uint32_t configGetTh0DefaultRawVacuum(void) {
 
     return (CONFIG_DEF_TH0_RAW_VACUUM);
+}
+
+uint32_t configGetTh0DefaultVacuum(void) {
+
+    return (CONFIG_DEF_TH0_VACUUM);
 }
 
 uint32_t configGetTh1Timeout(void) {

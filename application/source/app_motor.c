@@ -10,14 +10,6 @@
 #include "config/pinout_config.h"
 
 
-static bool isTimerElapsed;
-
-static void spinTimerHandler(void * arg)
-{
-    (void)arg;
-    isTimerElapsed = true;
-}
-
 void initMotorModule(void) {
     *(CONFIG_MSENSOR_GPIO_PORT)->tris  |=  (0x1u << CONFIG_MSENSOR_GPIO_PIN);
     *(CONFIG_MSENSOR_GPIO_PORT)->ansel |=  (0x1u << CONFIG_MSENSOR_GPIO_PIN);
@@ -31,14 +23,7 @@ void initMotorModule(void) {
 
 void motorEnable(void)
 {
-    esVTimer delay;
-
-    isTimerElapsed = false;
     *(CONFIG_MDRIVE_POWER_PORT)->set = (0x1u << CONFIG_MDRIVE_POWER_PIN);
-    esVTimerInit(&delay);
-    esVTimerStart(&delay, ES_VTMR_TIME_TO_TICK_MS(20), spinTimerHandler, NULL);
-
-    while (!isTimerElapsed);
     *(CONFIG_MDRIVE_GPIO_PORT)->set  = (0x1u << CONFIG_MDRIVE_GPIO_PIN);
 }
 

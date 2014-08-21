@@ -15,7 +15,7 @@
 #define CONFIG_ALLOCATION_TABLE_ADDRESS 0x0
 #define CONFIG_SPACE_NAME_SIZE          16
 
-#define STORAGE_SIGNATURE               0xdeadbeefu
+#define STORAGE_SIGNATURE               0xdeadbef0u
 
 #define STORAGE_DATA_ADDRESS(address)   (address + sizeof(struct storageSpace))
 
@@ -114,6 +114,11 @@ static uint32_t queueTailOffset(const struct storageArrayQueue * queue, uint32_t
     }
 
     return (index);
+}
+
+static uint32_t queueSize(const struct storageArrayQueue * queue)
+{
+    return (queue->size);
 }
 
 static uint32_t indexToAddress(const struct storageArray * array, uint32_t index)
@@ -223,7 +228,8 @@ esError storageRead(
         return (ES_ERROR_OBJECT_INVALID);
     }
 
-    if ((nvmSpace.signature != space->signature) || (nvmSpace.data.size != space->data.size)) {
+    if ((nvmSpace.signature != space->signature) ||
+        (nvmSpace.data.size != space->data.size)) {
 
         return (ES_ERROR_OBJECT_INVALID);
     }
@@ -289,8 +295,7 @@ void storageRegisterArray(struct storageArray * array, size_t size) {
     array->blockDesc.size    = flashGetSectorSize(array->phyDesc.base);
     array->blockDesc.entries = array->blockDesc.size / size;
     array->entryDesc.size    = size;
-    queueInit(&array->queue, array->blockDesc.entries);
-    array->entryNo           = 0;
+    queueInit(&array->queue, array->phyDesc.nBlocks * array->blockDesc.entries);
 }
 
 uint32_t storageArrayMaxNBlocks(const struct storageArray * array)
@@ -306,12 +311,12 @@ uint32_t storageArrayMaxNEntriesPerBlock(const struct storageArray * array)
 uint32_t storageArrayMaxNEntries(const struct storageArray * array)
 {
 
-    return (array->phyDesc.nBlocks * array->blockDesc.entries);
+    return (queueSize(&array->queue));
 }
 
 uint32_t storageArrayNEntries(const struct storageArray * array)
 {
-    return (array->entryNo);
+    return (queueOccupied(&array->queue));
 }
 
 esError storageArrayRead(const struct storageArray * array, uint32_t entryNo, void * buffer)
@@ -348,7 +353,6 @@ esError storageArrayEraseTail(struct storageArray * array)
         index   = queueGet(&array->queue);
         address = indexToAddress(array, index);
     }
-    
     error = flashEraseSector(sector);
 
     return (error);
@@ -366,13 +370,16 @@ esError storageArrayWrite(struct storageArray * array, const void * buffer)
     index       = queueTail(&array->queue);
     tailAddress = indexToAddress(array, index);
 
+#if 0
     if (flashGetSectorBase(headAddress) == flashGetSectorBase(tailAddress)) {
         error = storageArrayEraseTail(array);
 
         if (error) {
             return (error);
         }
-    } else if (headAddress == flashGetSectorBase(headAddress)) {
+    } else 
+#endif
+        if (headAddress == flashGetSectorBase(headAddress)) {
         error = flashEraseSector(headAddress);
 
         if (error) {

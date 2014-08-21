@@ -45,7 +45,6 @@ struct storageArray {
         uint32_t                    free;
         uint32_t                    size;
     }                           queue;
-    uint32_t                    entryNo;
     struct storageArray **      array;
 };
 

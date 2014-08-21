@@ -23,6 +23,9 @@ void newDut(uint32_t firstTreshold, uint32_t secondTreshold);
 void updateDutFirstTh(void);
 void updateDutSecondTh(void);
 
+uint32_t dutRawToMm(uint32_t rawValue);
+uint32_t dutMmToRaw(uint32_t mmValue);
+
 #ifdef	__cplusplus
 }
 #endif

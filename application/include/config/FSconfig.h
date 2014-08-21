@@ -44,13 +44,15 @@
 /*          specify these as well                                          */
 /***************************************************************************/
 
+#define LFNREADWRITE
+#define LFN_SIZE            32
 // The FS_MAX_FILES_OPEN #define is only applicable when Dynamic
 // memeory allocation is not used (FS_DYNAMIC_MEM not defined).
 // Defines how many concurent open files can exist at the same time.
 // Takes up static memory. If you do not need to open more than one
 // file at the same time, then you should set this to 1 to reduce
 // memory usage
-#define FS_MAX_FILES_OPEN 	2
+#define FS_MAX_FILES_OPEN 	1
 /************************************************************************/
 
 // The size of a sector
@@ -64,7 +66,7 @@
 /* *******************************************************************************************************/
 
 // Uncomment this to use the FindFirst, FindNext, and FindPrev
-#define ALLOW_FILESEARCH
+//#define ALLOW_FILESEARCH
 /************************************************************************/
 /************************************************************************/
 
@@ -74,12 +76,12 @@
 
 // Comment this line out if you don't intend to format your card
 // Writes must be enabled to use the format function
-#define ALLOW_FORMATS
+//#define ALLOW_FORMATS
 /************************************************************************/
 
 // Uncomment this definition if you're using directories
 // Writes must be enabled to use directories
-#define ALLOW_DIRS
+//#define ALLOW_DIRS
 /************************************************************************/
 
 // Allows the use of FSfopenpgm, FSremovepgm, etc with PIC18
@@ -88,7 +90,7 @@
 
 // Allows the use of the FSfprintf function
 // Writes must be enabled to use the FSprintf function
-#define ALLOW_FSFPRINTF
+//#define ALLOW_FSFPRINTF
 /************************************************************************/
 
 // If FAT32 support required then uncomment the following
